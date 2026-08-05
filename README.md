@@ -15,3 +15,7 @@ npm run dev
 npm test
 npm run build
 ```
+
+## Install
+
+Open the deployed site in Chrome, Edge, or Safari and choose the browser's install/add-to-home-screen action.
