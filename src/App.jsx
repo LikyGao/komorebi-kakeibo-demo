@@ -1227,28 +1227,22 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
           </button>
         </Row>
 
-        <div className="px-3.5 pt-3 pb-2 flex items-center gap-2">
-          <span className="lab shrink-0 whitespace-nowrap">{t("r.quick")}</span>
-          {qs.length > 0 && (
-            <button onClick={goQuick} className="shrink-0 flex items-center justify-center rounded-full"
-              style={{ width: 36, height: 28, boxShadow: `inset 0 0 0 1px ${C.line}`, color: C.ink3, background: C.surface }}
-              aria-label={t("r.editQuick")}>
-              <Plus size={16} />
-            </button>
-          )}
-        </div>
-        <div className="px-3.5">
+        <div className="px-3.5 pt-3 pb-2">
           {qs.length === 0 ? (
+            <>
+              <div className="pb-2"><span className="lab whitespace-nowrap">{t("r.quick")}</span></div>
             <button onClick={goQuick} className="w-full flex items-center justify-center gap-1.5 rounded-lg py-3"
               style={{ border: `1px dashed ${C.line}`, fontSize: 13, color: C.ink2, background: C.surface }}>
               <Plus size={14} /> {t("r.editQuick")}
             </button>
+            </>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="lab shrink-0 whitespace-nowrap mr-1">{t("r.quick")}</span>
               {qs.map((q) => {
                 const c = cats.find((x) => x.id === q.cat), fxd = q.amount != null;
                 return (
-                  <button key={q.id} onClick={() => tapQuick(q)} className="flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1"
+                  <button key={q.id} onClick={() => tapQuick(q)} className="shrink-0 flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1"
                     style={{ background: fxd ? `${c?.color}16` : C.surface,
                       boxShadow: `inset 0 0 0 ${fxd ? 1.5 : 1}px ${fxd ? c?.color : C.hair}` }}>
                     <Tile icon={c?.icon} color={c?.color} size={22} ico={12} />
@@ -1258,6 +1252,11 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                   </button>
                 );
               })}
+              <button onClick={goQuick} className="shrink-0 flex items-center justify-center rounded-full"
+                style={{ width: 36, height: 28, boxShadow: `inset 0 0 0 1px ${C.line}`, color: C.ink3, background: C.surface }}
+                aria-label={t("r.editQuick")}>
+                <Plus size={16} />
+              </button>
             </div>
           )}
         </div>
