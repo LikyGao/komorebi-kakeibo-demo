@@ -681,13 +681,56 @@ function normalizeDate(str) {
 /* 旧图标编号 → 本应用图标;认不出就给默认值,绝不因此让导入失败 */
 const OLD_ICON_MAP = {
   categoryDefault0: "Utensils", categoryDefault1: "ShoppingBasket", categoryDefault2: "Shirt",
-  categoryDefault3: "Sparkles", categoryDefault4: "Martini", categoryDefault5: "Pill",
-  categoryDefault6: "BookOpen", categoryDefault7: "Droplet", categoryDefault8: "TrainFront",
-  categoryDefault9: "Home", categoryDefault10: "Wallet", categoryDefault11: "Gift",
-  categoryDefault12: "Banknote", categoryDefault13: "Coins", categoryDefault14: "TrendingUp",
-  category42: "Shield", category75: "Pill", category88: "Smartphone", category101: "Gamepad2",
+  categoryDefault3: "Sparkles", categoryDefault4: "TrainFront", categoryDefault5: "BookOpen",
+  categoryDefault6: "Pill", categoryDefault7: "Martini", categoryDefault8: "Droplet",
+  categoryDefault9: "Smartphone", categoryDefault10: "Home", categoryDefault11: "Wallet",
+  categoryDefault12: "PiggyBank", categoryDefault13: "Gift", categoryDefault14: "Banknote",
+  categoryDefault15: "Coins", categoryDefault16: "TrendingUp", category32: "PawPrint",
+  category35: "Gamepad2", category75: "Pencil", category139: "Plane",
+  category42: "Shield", category88: "Smartphone", category101: "Gamepad2",
 };
 const mapIcon = (old) => OLD_ICON_MAP[old] || "MoreHorizontal";
+
+const IMPORT_CAT_ALIASES = {
+  expense: {
+    "餐饮": "food", "餐饮费": "food", "饮食": "food", "饮食费": "food", "食費": "food", "food": "food",
+    "日用": "daily", "日用品": "daily", "生活用品": "daily", "household": "daily",
+    "服饰": "cloth", "衣服": "cloth", "衣物": "cloth", "clothing": "cloth",
+    "美容": "beauty", "beauty": "beauty",
+    "社交": "social", "交际费": "social", "交際費": "social", "social": "social",
+    "医疗": "med", "医疗费": "med", "医療費": "med", "health": "med",
+    "学习": "edu", "教育费": "edu", "教育費": "edu", "learning": "edu",
+    "水电": "util", "水电费": "util", "水道光熱": "util", "utilities": "util",
+    "交通": "trans", "交通费": "trans", "交通費": "trans", "transit": "trans",
+    "居住": "house", "房费": "house", "住居": "house", "housing": "house",
+    "通信": "phone", "电话费": "phone", "通信費": "phone", "phone": "phone",
+    "娱乐": "fun", "娯楽": "fun", "fun": "fun",
+    "运动": "sport", "運動": "sport", "sport": "sport",
+    "其他": "misc", "その他": "misc", "other": "misc",
+  },
+  income: {
+    "工资": "salary", "給与": "salary", "salary": "salary",
+    "零花": "pocket", "零花钱": "pocket", "小遣い": "pocket", "allowance": "pocket",
+    "奖金": "bonus", "賞与": "bonus", "bonus": "bonus",
+    "副业": "side", "副業": "side", "side work": "side",
+    "投资": "invest", "投資": "invest", "investment": "invest",
+    "临时收入": "etc", "その他": "etc", "other": "etc",
+  },
+};
+const normalizeImportColor = (color) => {
+  const raw = String(color || "").trim();
+  if (/^#[0-9a-f]{6}$/i.test(raw)) return raw;
+  if (/^[0-9a-f]{6}$/i.test(raw)) return `#${raw}`;
+  return "#9AA0A8";
+};
+const findImportCategory = (existingCats, type, name) => {
+  const trimmed = String(name || "").trim();
+  const exact = existingCats.find((c) => c.type === type && !c.i18n && c.name === trimmed);
+  if (exact) return exact;
+  const key = IMPORT_CAT_ALIASES[type]?.[trimmed] || IMPORT_CAT_ALIASES[type]?.[trimmed.toLowerCase()];
+  if (!key) return null;
+  return existingCats.find((c) => c.type === type && c.k === key) || null;
+};
 
 /* 内容哈希:文件名变了但内容相同也要认得出是同一份 */
 function hashText(text) {
@@ -719,11 +762,11 @@ function buildImportPlan(text, { cutoff = TODAY, existingCats = [], existingKeys
     const type = String(r.type) === "1" ? "income" : "expense";
     const name = (r.name || "").trim();
     if (!name) return;
-    const hit = existingCats.find((c) => c.type === type && (c.i18n ? null : c.name) === name);
+    const hit = findImportCategory(existingCats, type, name);
     if (hit) { catByOldId[r.id] = hit.id; return; }
     const made = {
       id: nextId++, k: `imp${r.id}`, i18n: null, name, type,
-      icon: mapIcon(r.icon), color: /^#[0-9a-f]{6}$/i.test(r.color || "") ? r.color : "#9AA0A8",
+      icon: mapIcon(r.icon), color: normalizeImportColor(r.color),
       order: Number(r.index) || newCats.length + 1,
     };
     newCats.push(made);
@@ -882,7 +925,7 @@ function useDragSort(ids, onReorder) {
    换到 React Native 时把 load/save 换成 AsyncStorage 或 SQLite 即可,
    其余代码不用动——所有状态都从 usePersisted 出去。
    ═════════════════════════════════════════════════════════ */
-const STORE_KEY = "kakeibo:v2";
+const STORE_KEY = "kakeibo:v3";
 
 async function loadAll() {
   try {
