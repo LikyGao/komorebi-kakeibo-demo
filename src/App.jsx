@@ -1210,37 +1210,27 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
         </Row>
 
         <div className="px-3.5 pt-3 pb-2">
-          {qs.length === 0 ? (
-            <>
-              <div className="pb-2"><span className="lab whitespace-nowrap">{t("r.quick")}</span></div>
-            <button onClick={goQuick} className="w-full flex items-center justify-center rounded-lg py-3"
-              style={{ border: `1px dashed ${C.line}`, fontSize: 13, color: C.ink2, background: C.surface }}>
-              <Plus size={18} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="lab shrink-0 whitespace-nowrap mr-1">{t("r.quick")}</span>
+            {qs.map((q) => {
+              const c = cats.find((x) => x.id === q.cat), fxd = q.amount != null;
+              return (
+                <button key={q.id} onClick={() => tapQuick(q)} className="shrink-0 flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1"
+                  style={{ background: fxd ? `${c?.color}16` : C.surface,
+                    boxShadow: `inset 0 0 0 ${fxd ? 1.5 : 1}px ${fxd ? c?.color : C.hair}` }}>
+                  <Tile icon={c?.icon} color={c?.color} size={22} ico={12} />
+                  <span style={{ fontSize: 13, fontWeight: 500, color: C.ink }}>{L(q)}</span>
+                  {fxd && <span className="num" style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
+                    {q.amount.toLocaleString("en-US")}{q.cur && q.cur !== cur ? ` ${q.cur}` : ""}</span>}
+                </button>
+              );
+            })}
+            <button onClick={goQuick} className="shrink-0 flex items-center justify-center rounded-full"
+              style={{ width: 36, height: 28, boxShadow: `inset 0 0 0 1px ${C.line}`, color: C.ink3, background: C.surface }}
+              aria-label={t("r.editQuick")}>
+              <Plus size={16} />
             </button>
-            </>
-          ) : (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="lab shrink-0 whitespace-nowrap mr-1">{t("r.quick")}</span>
-              {qs.map((q) => {
-                const c = cats.find((x) => x.id === q.cat), fxd = q.amount != null;
-                return (
-                  <button key={q.id} onClick={() => tapQuick(q)} className="shrink-0 flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1"
-                    style={{ background: fxd ? `${c?.color}16` : C.surface,
-                      boxShadow: `inset 0 0 0 ${fxd ? 1.5 : 1}px ${fxd ? c?.color : C.hair}` }}>
-                    <Tile icon={c?.icon} color={c?.color} size={22} ico={12} />
-                    <span style={{ fontSize: 13, fontWeight: 500, color: C.ink }}>{L(q)}</span>
-                    {fxd && <span className="num" style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
-                      {q.amount.toLocaleString("en-US")}{q.cur && q.cur !== cur ? ` ${q.cur}` : ""}</span>}
-                  </button>
-                );
-              })}
-              <button onClick={goQuick} className="shrink-0 flex items-center justify-center rounded-full"
-                style={{ width: 36, height: 28, boxShadow: `inset 0 0 0 1px ${C.line}`, color: C.ink3, background: C.surface }}
-                aria-label={t("r.editQuick")}>
-                <Plus size={16} />
-              </button>
-            </div>
-          )}
+          </div>
         </div>
         <div style={{ height: 10 }} />
         <div className="px-3.5 pt-3 pb-2 flex items-center gap-1.5">
@@ -1262,32 +1252,44 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
             const fromVal = fxCalc.side === "from" ? fxCalc.value : (v ? fxFmt(edited / v) : "");
             const toVal = fxCalc.side === "to" ? fxCalc.value : (v ? fxFmt(edited * v) : "");
             const inputStyle = (side) => ({
-              width: 72, fontSize: 14, fontWeight: 600, color: C.ink,
+              width: "100%", fontSize: 14, fontWeight: 600, color: C.ink,
               borderBottom: `1.5px solid ${fxCalc.side === side ? C.ink : C.line}`,
               paddingBottom: 1,
             });
+            const boxStyle = {
+              minWidth: 0,
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) auto",
+              alignItems: "center",
+              columnGap: 6,
+            };
             return (
-              <div key={i} className="flex items-center gap-1.5 px-2.5 py-2.5"
-                style={{ borderTop: i ? `1px solid ${C.hair}` : "none" }}>
-                <input value={fromVal} inputMode="decimal" placeholder="1"
-                  onChange={(e) => setFxCalc({ side: "from", value: cleanDecimal(e.target.value) })}
-                  className="num shrink-0 bg-transparent outline-none text-right"
-                  style={inputStyle("from")} />
-                <button onClick={() => setSheet({ k: "pair", i, side: "from" })}
-                  className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
-                  <span style={{ fontSize: 13 }}>{flag(pr.from)}</span>
-                  <span className="num" style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{pr.from}</span>
-                </button>
+              <div key={i} className="px-2.5 py-2.5"
+                style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "center", gap: 8,
+                  borderTop: i ? `1px solid ${C.hair}` : "none" }}>
+                <div style={boxStyle}>
+                  <input value={fromVal} inputMode="decimal" placeholder="1"
+                    onChange={(e) => setFxCalc({ side: "from", value: cleanDecimal(e.target.value) })}
+                    className="num bg-transparent outline-none text-right"
+                    style={inputStyle("from")} />
+                  <button onClick={() => setSheet({ k: "pair", i, side: "from" })}
+                    className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
+                    <span style={{ fontSize: 13 }}>{flag(pr.from)}</span>
+                    <span className="num" style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{pr.from}</span>
+                  </button>
+                </div>
                 <span className="num shrink-0" style={{ fontSize: 11, color: C.ink3 }}>=</span>
-                <input value={toVal} inputMode="decimal" placeholder={v == null ? "—" : "0"}
-                  onChange={(e) => setFxCalc({ side: "to", value: cleanDecimal(e.target.value) })}
-                  className="num shrink-0 bg-transparent outline-none text-right"
-                  style={{ ...inputStyle("to"), color: same ? C.ink3 : C.ink }} />
-                <button onClick={() => setSheet({ k: "pair", i, side: "to" })}
-                  className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
-                  <span style={{ fontSize: 13 }}>{flag(pr.to)}</span>
-                  <span className="num" style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{pr.to}</span>
-                </button>
+                <div style={boxStyle}>
+                  <input value={toVal} inputMode="decimal" placeholder={v == null ? "—" : "0"}
+                    onChange={(e) => setFxCalc({ side: "to", value: cleanDecimal(e.target.value) })}
+                    className="num bg-transparent outline-none text-right"
+                    style={{ ...inputStyle("to"), color: same ? C.ink3 : C.ink }} />
+                  <button onClick={() => setSheet({ k: "pair", i, side: "to" })}
+                    className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
+                    <span style={{ fontSize: 13 }}>{flag(pr.to)}</span>
+                    <span className="num" style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{pr.to}</span>
+                  </button>
+                </div>
                 {pairs.length > 1 && (
                   <button onClick={() => setPairs(pairs.filter((_, z) => z !== i))} className="shrink-0 p-0.5 -mr-0.5"
                     aria-label={t("x.removePair")}>
