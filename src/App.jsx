@@ -340,14 +340,13 @@ const CUR = {
   NZD: { dec: 2, sign: "NZ$", cc: "NZ", src: "api" },
   /* 澳门币钉住港币,由 HKD 推算 */
   MOP: { dec: 2, sign: "MOP$", cc: "MO", src: "peg", pegTo: "HKD", pegRate: 1 / 1.03 },
-  /* 欧洲央行不发布新台币,只能手动填 */
-  TWD: { dec: 2, sign: "NT$", cc: "TW", src: "manual" },
+  TWD: { dec: 2, sign: "NT$", cc: null, src: "api" },
 };
 
 /* 币种 → 国旗 emoji。EUR 用欧盟旗 */
 const flag = (code) => {
   const cc = CUR[code]?.cc;
-  if (!cc) return "🏳️";
+  if (!cc) return "";
   return String.fromCodePoint(...[...cc].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
 };
 
@@ -513,10 +512,6 @@ async function fetchRates(codes) {
   });
   if (Object.keys(rates).length <= 1 && wanted.length > 1) throw new Error("no usable rates");
   return { date: got.date, rates };
-}
-
-async function fetchTWD() {
-  return null;
 }
 
 async function fetchSeries(codes) {
@@ -1000,11 +995,6 @@ const CurrencySheet = ({ value, onPick, onClose, title, favs }) => {
           <span style={{ fontSize: 22 }}>{flag(code)}</span>
           <span className="num shrink-0" style={{ fontSize: 12, fontWeight: 700, color: C.ink2, width: 34 }}>{code}</span>
           <span className="flex-1 truncate" style={{ fontSize: 14, color: C.ink }}>{t(`cur.${code}`)}</span>
-          {CUR[code].src === "manual" && (
-            <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ background: C.warn, color: C.warnInk, fontSize: 9.5 }}>
-              {t("x.manual")}
-            </span>
-          )}
           <span className="num shrink-0" style={{ fontSize: 12, color: C.ink3 }}>{CUR[code].sign}</span>
           {value === code && <Check size={16} color={C.brand} strokeWidth={2.6} />}
         </button>
@@ -1132,16 +1122,8 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
     try {
       const codes = [...new Set([...favs, main])];
       const got = await fetchRates(codes);
-      /* 新台币走臺銀,拿不到就保留上次的值 */
-      if (codes.includes("TWD") && got.rates.USD) {
-        const twd = await fetchTWD(got.rates.USD);
-        if (twd) got.rates.TWD = twd;
-        else { const prev = ratesOn(fx, TODAY)?.rates?.TWD; if (prev) got.rates.TWD = prev; }
-      }
-      /* 接口没有的币种(如 TWD)沿用最近一次的值,不因更新而丢失 */
       const prev = ratesOn(fx, TODAY)?.rates || {};
-      const merged = { ...got.rates };
-      Object.keys(CUR).forEach((c) => { if (CUR[c].src === "manual" && prev[c]) merged[c] = prev[c]; });
+      const merged = { ...prev, ...got.rates };
       setFx((f) => mergeDay(f, got.date, merged, "api"));
       flash(`${t("x.done")} · ${got.date}`);
     } catch { flash(t("x.failed"), true); }
@@ -1231,9 +1213,9 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
           {qs.length === 0 ? (
             <>
               <div className="pb-2"><span className="lab whitespace-nowrap">{t("r.quick")}</span></div>
-            <button onClick={goQuick} className="w-full flex items-center justify-center gap-1.5 rounded-lg py-3"
+            <button onClick={goQuick} className="w-full flex items-center justify-center rounded-lg py-3"
               style={{ border: `1px dashed ${C.line}`, fontSize: 13, color: C.ink2, background: C.surface }}>
-              <Plus size={14} /> {t("r.editQuick")}
+              <Plus size={18} />
             </button>
             </>
           ) : (
@@ -1280,7 +1262,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
             const fromVal = fxCalc.side === "from" ? fxCalc.value : (v ? fxFmt(edited / v) : "");
             const toVal = fxCalc.side === "to" ? fxCalc.value : (v ? fxFmt(edited * v) : "");
             const inputStyle = (side) => ({
-              width: 58, fontSize: 14, fontWeight: 600, color: C.ink,
+              width: 72, fontSize: 14, fontWeight: 600, color: C.ink,
               borderBottom: `1.5px solid ${fxCalc.side === side ? C.ink : C.line}`,
               paddingBottom: 1,
             });
@@ -1299,7 +1281,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                 <span className="num shrink-0" style={{ fontSize: 11, color: C.ink3 }}>=</span>
                 <input value={toVal} inputMode="decimal" placeholder={v == null ? "—" : "0"}
                   onChange={(e) => setFxCalc({ side: "to", value: cleanDecimal(e.target.value) })}
-                  className="num flex-1 min-w-0 bg-transparent outline-none text-right"
+                  className="num shrink-0 bg-transparent outline-none text-right"
                   style={{ ...inputStyle("to"), color: same ? C.ink3 : C.ink }} />
                 <button onClick={() => setSheet({ k: "pair", i, side: "to" })}
                   className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
@@ -2604,11 +2586,6 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
                 <span style={{ fontSize: 20 }}>{flag(c)}</span>
                 <span className="num shrink-0" style={{ fontSize: 12, fontWeight: 700, color: C.ink2, width: 34 }}>{c}</span>
                 <span className="flex-1 truncate" style={{ fontSize: 14, color: C.ink }}>{t(`cur.${c}`)}</span>
-                {CUR[c]?.src === "manual" && (
-                  <span className="shrink-0 rounded-full px-1.5 py-0.5" style={{ background: C.warn, color: C.warnInk, fontSize: 9.5 }}>
-                    {t("x.manual")}
-                  </span>
-                )}
               </div>
             ))}
           </div>
@@ -2667,11 +2644,6 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
                   {added.map((c) => `${flag(c)} ${c}`).join("  ")}
                 </div>
                 <div style={{ fontSize: 11.5, color: C.ink2, lineHeight: 1.6, marginTop: 3 }}>{t("x.willBackfill")}</div>
-              </div>
-            )}
-            {added.some((c) => CUR[c]?.src === "manual") && (
-              <div className="mt-2 rounded-lg px-2.5 py-2" style={{ background: C.warn }}>
-                <span style={{ fontSize: 11.5, color: C.warnInk, lineHeight: 1.6 }}>{t("x.confirmBodyNew")}</span>
               </div>
             )}
             <div className="flex gap-2 mt-4">
