@@ -379,6 +379,17 @@ const compact = (minor, code) => {
   return String(Math.round(v));
 };
 const fromMinor = (m, c) => m / 10 ** (CUR[c]?.dec ?? 0);
+const cleanDecimal = (v) => String(v || "").replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+const fxNum = (v) => {
+  const n = parseFloat(v);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+};
+const fxFmt = (v) => {
+  if (!Number.isFinite(v)) return "";
+  if (v === 0) return "0";
+  const s = v < 1 ? v.toFixed(4) : v.toFixed(2);
+  return s.replace(/\.?0+$/, "");
+};
 
 /* ═════════════════════════════════════════════════════════
    汇率
@@ -468,6 +479,50 @@ const rateSpan = (daily, from, to, dates) => {
 };
 
 const latestDate = (daily) => Object.keys(daily).sort().pop() || null;
+const earliestDate = (rows) => rows.map((r) => r.date).filter(Boolean).sort()[0] || null;
+const mergeDay = (daily, date, rates, src = "api") => ({
+  ...daily,
+  [date]: { ...(daily[date] || {}), ...rates, __src: src },
+});
+const mergeSeries = (daily, byDay, src = "api") =>
+  Object.entries(byDay || {}).reduce((acc, [date, rates]) => mergeDay(acc, date, rates, src), daily);
+
+async function fetchRates(codes) {
+  const wanted = [...new Set(["JPY", ...codes])].filter((c) => CUR[c]?.src !== "manual");
+  const to = wanted.filter((c) => c !== "JPY").join(",");
+  const fromOpenApi = async () => {
+    const res = await fetch("https://open.er-api.com/v6/latest/JPY", { cache: "no-store" });
+    if (!res.ok) throw new Error("rate api failed");
+    const data = await res.json();
+    if (data.result && data.result !== "success") throw new Error("rate api returned failure");
+    return { date: data.time_last_update_utc ? ymd(new Date(data.time_last_update_utc)) : TODAY, rates: data.rates || {} };
+  };
+  const fromFrankfurter = async () => {
+    const res = await fetch(`https://api.frankfurter.app/latest?from=JPY${to ? `&to=${encodeURIComponent(to)}` : ""}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("fallback rate api failed");
+    const data = await res.json();
+    return { date: data.date || TODAY, rates: data.rates || {} };
+  };
+
+  const got = await fromOpenApi().catch(fromFrankfurter);
+  const rates = { JPY: Math.round(FX_SCALE) };
+  wanted.forEach((code) => {
+    if (code === "JPY") return;
+    const perJpy = got.rates[code];
+    if (perJpy) rates[code] = Math.round((1 / perJpy) * FX_SCALE);
+  });
+  if (Object.keys(rates).length <= 1 && wanted.length > 1) throw new Error("no usable rates");
+  return { date: got.date, rates };
+}
+
+async function fetchTWD() {
+  return null;
+}
+
+async function fetchSeries(codes) {
+  const got = await fetchRates(codes);
+  return { [got.date]: got.rates };
+}
 
 /* ═════════════════════════════════════════════════════════
    种子数据
@@ -531,19 +586,9 @@ const SEED_CATS = [
 ];
 const byK = (k) => SEED_CATS.find((c) => c.k === k);
 
-const SEED_QUICK = [
-  { id: 1, i18n: "n.conv",   name: "便利店", cat: 1,  amount: null, cur: "JPY", type: "expense" },
-  { id: 2, i18n: "n.market", name: "超市",   cat: 1,  amount: null, cur: "JPY", type: "expense" },
-  { id: 3, i18n: "n.swim",   name: "游泳",   cat: 13, amount: 230,  cur: "JPY", type: "expense" },
-  { id: 4, i18n: "n.pass",   name: "定期券", cat: 9,  amount: 6180, cur: "JPY", type: "expense" },
-];
+const SEED_QUICK = [];
 
-const SEED_FIXED = [
-  { id: 1, i18n: "n.ins",   name: "保险",   cat: 6,  amount: 2050, cur: "JPY", day: 15, start: THIS_MONTH, on: true },
-  { id: 2, i18n: "n.wifi",  name: "WiFi",   cat: 11, amount: 5060, cur: "JPY", day: 10, start: THIS_MONTH, on: true },
-  { id: 3, i18n: "n.phone", name: "手机费", cat: 11, amount: 3694, cur: "JPY", day: 7,  start: THIS_MONTH, on: true },
-  { id: 4, i18n: "n.gym",   name: "健身房", cat: 13, amount: 7800, cur: "JPY", day: 1,  start: THIS_MONTH, on: false },
-];
+const SEED_FIXED = [];
 
 const monthsBetween = (start, end) => {
   const out = []; let [y, m] = start.split("-").map(Number);
@@ -571,44 +616,7 @@ const pendingFixed = (fixed, txns, today = TODAY) => {
   return out;
 };
 
-const RAW = [
-  [1,340,"food","n.conv"],[4,499,"daily","n.drug"],[4,3861,"food","n.market"],
-  [6,4491,"food","n.market"],[7,3694,"phone","n.phone","3:"+THIS_MONTH],[7,4596,"food","n.eatout"],
-  [8,1834,"food","n.conv"],[9,150,"food","n.conv"],[10,5060,"phone","n.wifi","2:"+THIS_MONTH],
-  [10,3740,"food","n.market"],[11,5733,"food","n.eatout"],[12,2860,"food","n.market"],
-  [13,1648,"food","n.conv"],[15,2050,"med","n.ins","1:"+THIS_MONTH],[15,100,"food","n.conv"],
-  [16,3960,"beauty","n.hair"],[16,2693,"food","n.market"],[17,2802,"food","n.market"],
-  [18,2750,"social","n.party"],[18,3422,"food","n.eatout"],[19,5488,"food","n.market"],
-  [20,4457,"food","n.market"],[21,540,"food","n.conv"],[22,1799,"food","n.market"],
-  [23,3000,"edu","n.book"],[23,3570,"food","n.market"],[24,1580,"food","n.lunch"],
-  [25,753,"food","n.conv"],[26,5378,"food","n.eatout"],[27,3000,"util","n.water"],
-  [27,2341,"food","n.market"],[28,6180,"trans","n.pass"],[28,8502,"food","n.market"],
-  [29,2743,"util","n.elec"],[29,456,"food","n.conv"],[29,213,"food","n.conv"],
-  [29,27256,"food","n.stock"],[30,2282,"food","n.butcher"],
-];
-/* 示例数据落在当月,且不超过今天 */
-const seedTxns = () => {
-  const t = RAW
-    .filter(([d]) => d <= DIM)
-    .map(([d, a, k, n, fxKey], i) => ({
-      id: i + 1, type: "expense", amount: a, cur: "JPY", cat: byK(k).id,
-      date: `${THIS_MONTH}-${String(d).padStart(2, "0")}`,
-      name: "", i18n: n, fx: fxKey || null, fxd: TODAY,
-    }));
-  if (DIM >= 14) t.push({ id: 900, type: "income", amount: 2039, cur: "JPY", cat: 26,
-    date: `${THIS_MONTH}-14`, name: "", i18n: "n.points", fx: null, fxd: TODAY });
-  /* 几笔外币,用来演示多币种统计 */
-  const foreign = [
-    [11, 8800, "CNY", "food",  "n.eatout"],
-    [12, 12600, "CNY", "cloth", null],
-    [19, 4500, "USD", "fun",   null],
-  ];
-  foreign.filter(([d]) => d <= DIM).forEach(([d, a, c, k, n], i) => {
-    t.push({ id: 910 + i, type: "expense", amount: a, cur: c, cat: byK(k).id,
-      date: `${THIS_MONTH}-${String(d).padStart(2, "0")}`, name: n ? "" : c, i18n: n, fx: null, fxd: TODAY });
-  });
-  return t;
-};
+const seedTxns = () => [];
 
 
 
@@ -879,7 +887,7 @@ function useDragSort(ids, onReorder) {
    换到 React Native 时把 load/save 换成 AsyncStorage 或 SQLite 即可,
    其余代码不用动——所有状态都从 usePersisted 出去。
    ═════════════════════════════════════════════════════════ */
-const STORE_KEY = "kakeibo:v1";
+const STORE_KEY = "kakeibo:v2";
 
 async function loadAll() {
   try {
@@ -1102,7 +1110,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
   const [sheet, setSheet] = useState(null);
   /* 汇率对:初始一行,系统语言对应的币种换主币种 */
   const [pairs, setPairs] = useState(() => [{ from: LANG_CUR[lang] || main, to: main }]);
-  const [fxAmt, setFxAmt] = useState("1");        // 换算器左边的数,默认 1
+  const [fxCalc, setFxCalc] = useState({ side: "from", value: "1" });
   const [toast, setToast] = useState(null);
   const [shake, setShake] = useState(false);
   const [fxBusy, setFxBusy] = useState(false);
@@ -1265,36 +1273,34 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
         <div className="mx-3.5 overflow-hidden" style={{ borderRadius: C.R, background: C.surface, boxShadow: `inset 0 0 0 1px ${C.hair}` }}>
           {pairs.map((pr, i) => {
             const r = snap?.rates;
-            const amtNum = Math.abs(parseFloat(fxAmt)) || 1;
             const a = rateOf(r, pr.from), b = rateOf(r, pr.to);
             const v = a && b ? a / b : null;
             const same = pr.from === pr.to;
+            const edited = fxNum(fxCalc.value);
+            const fromVal = fxCalc.side === "from" ? fxCalc.value : (v ? fxFmt(edited / v) : "");
+            const toVal = fxCalc.side === "to" ? fxCalc.value : (v ? fxFmt(edited * v) : "");
+            const inputStyle = (side) => ({
+              width: 58, fontSize: 14, fontWeight: 600, color: C.ink,
+              borderBottom: `1.5px solid ${fxCalc.side === side ? C.ink : C.line}`,
+              paddingBottom: 1,
+            });
             return (
               <div key={i} className="flex items-center gap-1.5 px-2.5 py-2.5"
                 style={{ borderTop: i ? `1px solid ${C.hair}` : "none" }}>
-                {i === 0 ? (
-                  <input value={fxAmt} inputMode="decimal" placeholder="1"
-                    onChange={(e) => setFxAmt(e.target.value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"))}
-                    className="num shrink-0 bg-transparent outline-none text-right"
-                    style={{ width: 52, fontSize: 14, fontWeight: 600, color: C.ink,
-                      borderBottom: `1.5px solid ${C.line}`, paddingBottom: 1 }} />
-                ) : (
-                  <span className="num shrink-0 text-right" style={{ width: 52, fontSize: 14, fontWeight: 600, color: C.ink }}>
-                    {amtNum === 1 ? "1" : fxAmt}
-                  </span>
-                )}
+                <input value={fromVal} inputMode="decimal" placeholder="1"
+                  onChange={(e) => setFxCalc({ side: "from", value: cleanDecimal(e.target.value) })}
+                  className="num shrink-0 bg-transparent outline-none text-right"
+                  style={inputStyle("from")} />
                 <button onClick={() => setSheet({ k: "pair", i, side: "from" })}
                   className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
                   <span style={{ fontSize: 13 }}>{flag(pr.from)}</span>
                   <span className="num" style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{pr.from}</span>
                 </button>
                 <span className="num shrink-0" style={{ fontSize: 11, color: C.ink3 }}>=</span>
-                <span className="num truncate flex-1 text-right" style={{ fontSize: 15, fontWeight: 600, color: same ? C.ink3 : C.ink }}>
-                  {v == null ? "—" : (() => {
-                    const out = v * amtNum;
-                    return out < 1 ? out.toFixed(4) : out.toFixed(2);
-                  })()}
-                </span>
+                <input value={toVal} inputMode="decimal" placeholder={v == null ? "—" : "0"}
+                  onChange={(e) => setFxCalc({ side: "to", value: cleanDecimal(e.target.value) })}
+                  className="num flex-1 min-w-0 bg-transparent outline-none text-right"
+                  style={{ ...inputStyle("to"), color: same ? C.ink3 : C.ink }} />
                 <button onClick={() => setSheet({ k: "pair", i, side: "to" })}
                   className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
                   <span style={{ fontSize: 13 }}>{flag(pr.to)}</span>
@@ -2715,7 +2721,7 @@ export default function App() {
   const [[y, m], setYm] = useState([+TODAY.slice(0, 4), +TODAY.slice(5, 7)]);
   const [cur, setCur] = useState("JPY");
 
-  /* 启动读盘。没有存档就落到示例数据,方便第一次看效果 */
+  /* 启动读盘。没有存档就保持空账本。 */
   useEffect(() => {
     let alive = true;
     loadAll().then((d) => {
@@ -2734,7 +2740,7 @@ export default function App() {
         setSetupDone(!!d.setupDone);
       } else {
         setTxns(seedTxns());
-        setBudgets({ __t: 150000, 1: 90000, 11: 9000 });
+        setBudgets({});
       }
       setReady(true);
     });
