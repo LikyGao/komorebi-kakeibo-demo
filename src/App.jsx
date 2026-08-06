@@ -1215,18 +1215,28 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
         </div>
 
         <Row label={t("r.rowCategory")} last>
-          <button onClick={() => setSheet("cat")} className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5"
+          <button onClick={() => setSheet("cat")} className="min-w-0 flex items-center gap-2 px-2 py-1.5"
             style={{ borderRadius: C.r, background: C.soft }}>
             <Tile icon={cObj?.icon} color={cObj?.color} size={26} ico={14} />
             <span className="truncate" style={{ fontSize: 13.5, fontWeight: 500, color: C.ink }}>{L(cObj)}</span>
-            <ChevronDown size={15} color={C.ink3} className="ml-auto shrink-0" />
+            <ChevronDown size={15} color={C.ink3} className="shrink-0" />
           </button>
-          <button onClick={goCats} className="p-2 shrink-0" style={{ borderRadius: C.r, background: C.soft }} aria-label={t("c.title")}>
-            <SlidersHorizontal size={15} color={C.ink2} />
+          <button onClick={manual} className="ml-auto shrink-0 rounded-lg px-6 py-2.5"
+            style={{ background: C.brand, color: "#fff", fontSize: 14.5, fontWeight: 600, borderRadius: C.R }}>
+            {t("r.save")}
           </button>
         </Row>
 
-        <div className="px-3.5 pt-3 pb-2"><span className="lab">{t("r.quick")}</span></div>
+        <div className="px-3.5 pt-3 pb-2 flex items-center gap-2">
+          <span className="lab shrink-0 whitespace-nowrap">{t("r.quick")}</span>
+          {qs.length > 0 && (
+            <button onClick={goQuick} className="shrink-0 flex items-center justify-center rounded-full"
+              style={{ width: 36, height: 28, boxShadow: `inset 0 0 0 1px ${C.line}`, color: C.ink3, background: C.surface }}
+              aria-label={t("r.editQuick")}>
+              <Plus size={16} />
+            </button>
+          )}
+        </div>
         <div className="px-3.5">
           {qs.length === 0 ? (
             <button onClick={goQuick} className="w-full flex items-center justify-center gap-1.5 rounded-lg py-3"
@@ -1248,19 +1258,10 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                   </button>
                 );
               })}
-              <button onClick={goQuick} className="flex items-center rounded-full px-3"
-                style={{ boxShadow: `inset 0 0 0 1px ${C.line}`, color: C.ink3, background: C.surface }} aria-label={t("r.editQuick")}>
-                <Plus size={15} />
-              </button>
             </div>
           )}
         </div>
-
-        <div className="p-3.5">
-          <button onClick={manual} className="w-full rounded-lg py-3" style={{ background: C.brand, color: "#fff", fontSize: 14.5, fontWeight: 600, borderRadius: C.R }}>
-            {t("r.save")}
-          </button>
-        </div>
+        <div style={{ height: 10 }} />
         <div className="px-3.5 pt-3 pb-2 flex items-center gap-1.5">
           <span className="lab shrink-0">{t("x.panel")}</span>
           <span className="num truncate" style={{ fontSize: 10.5, color: C.ink3 }}>{snap?.at || "—"}</span>
@@ -1347,9 +1348,11 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               </button>
             ))}
             <button onClick={() => { setSheet(null); goCats(); }}
-              className="flex flex-col items-center gap-1 rounded-lg py-2.5 px-1"
+              className="flex flex-col items-center gap-1.5 rounded-lg py-2.5 px-1"
               style={{ border: `1px dashed ${C.line}`, background: C.page }}>
-              <SlidersHorizontal size={19} color={C.ink3} />
+              <span className="tile" style={{ width: 34, height: 34, background: "transparent" }}>
+                <SlidersHorizontal size={19} color={C.ink3} />
+              </span>
               <span className="truncate w-full text-center" style={{ fontSize: 11, color: C.ink3 }}>{t("g.edit")}</span>
             </button>
           </div>
