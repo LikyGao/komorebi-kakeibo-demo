@@ -8,10 +8,10 @@ const stub='const React={createElement:()=>null,useRef:()=>({current:{}})},useSt
 const mod={exports:{}};
 new Function('module','window','fetch', stub+icons+out
   .replace('export default','module.exports.App=')
-  +'\nmodule.exports.buildImportPlan=buildImportPlan;module.exports.parseSections=parseSections;module.exports.parseCsvLine=parseCsvLine;module.exports.normalizeDate=normalizeDate;module.exports.hashText=hashText;module.exports.recordKey=recordKey;'
+  +'\nmodule.exports.buildImportPlan=buildImportPlan;module.exports.parseSections=parseSections;module.exports.parseCsvLine=parseCsvLine;module.exports.normalizeDate=normalizeDate;module.exports.hashText=hashText;module.exports.recordKey=recordKey;module.exports.SEED_CATS=SEED_CATS;'
 )(mod,{storage:{get:async()=>null,set:async()=>null}},()=>Promise.reject());
 
-const {buildImportPlan,parseSections,parseCsvLine,normalizeDate,hashText}=mod.exports;
+const {buildImportPlan,parseSections,parseCsvLine,normalizeDate,hashText,SEED_CATS}=mod.exports;
 const text=fs.readFileSync('tests/komorebi_sample.csv','utf8');
 
 let pass=0,fail=0;
@@ -88,6 +88,33 @@ const existing=[{id:1,type:'expense',name:'食費',k:'x',icon:'Utensils',color:'
 const plan3=buildImportPlan(text,{cutoff:'2026-07-31',existingCats:existing});
 ok('复用而不新建', plan3.catsToCreate.every(c=>c.name!=='食費'));
 ok('旧ID映射到已有分类', plan3.catMap['1']===1, String(plan3.catMap['1']));
+
+console.log('\n【12】本应用导出备份再导入');
+const backupText=`#TRANSACTIONS
+id,date,type,amount,currency,categoryId,category,note,rateDate
+abc,2026-08-07,expense,123.45,CNY,1,餐饮,测试午饭,2026-08-07
+def,2026-08-08,income,5000,JPY,21,工资,工资,2026-08-07
+
+#CATEGORIES
+id,name,type,icon,color,order
+1,餐饮,expense,Utensils,#D4644A,1
+21,工资,income,Wallet,#3E8E5A,1
+
+#FIXED_COSTS
+id,name,type,amount,currency,categoryId,category,day,enabled,startDate
+f1,房租,expense,80000,JPY,10,居住,25,1,2026-08
+
+#EXCHANGE_RATES
+date,currency,rateToJPY,source
+2026-08-07,CNY,23.6,api
+2026-08-07,JPY,1,api`;
+const backupPlan=buildImportPlan(backupText,{existingCats:SEED_CATS,existingKeys:new Set()});
+ok('识别为本应用备份格式', backupPlan.kind==='backup', backupPlan.kind);
+ok('备份交易可导入', backupPlan.stats.ready===2 && backupPlan.rows.length===2, String(backupPlan.stats.ready));
+ok('保留每条交易自己的币种', backupPlan.rows.map(r=>r.cur).join(',')==='CNY,JPY', backupPlan.rows.map(r=>r.cur).join(','));
+ok('内置分类不会重复创建', backupPlan.catsToCreate.length===0, String(backupPlan.catsToCreate.length));
+ok('固定支出和汇率也读出', backupPlan.fixedToCreate.length===1 && Object.keys(backupPlan.fxToMerge).length===1,
+  `fixed=${backupPlan.fixedToCreate.length},fx=${Object.keys(backupPlan.fxToMerge).length}`);
 
 console.log(`\n通过 ${pass} / 失败 ${fail}`);
 process.exit(fail?1:0);

@@ -762,32 +762,125 @@ function hashText(text) {
 /* 每条记录的稳定标识,用于防重复 */
 const recordKey = (r) =>
   [r.inputDateString, r.amount, r.memo, r.categoryId, r.type, r.createdAt, r.accountingId].join("|");
+const importType = (value) => {
+  const raw = String(value || "").trim().toLowerCase();
+  return raw === "1" || raw === "income" ? "income" : "expense";
+};
+
+function buildCategoryImport(rawCats, existingCats) {
+  const catByOldId = {};
+  const newCats = [];
+  let nextId = Math.max(0, ...existingCats.map((c) => c.id)) + 1;
+  rawCats.forEach((r) => {
+    const type = importType(r.type);
+    const name = (r.name || "").trim();
+    if (!name) return;
+    const hit = findImportCategory(existingCats, type, name);
+    if (hit) { catByOldId[r.id] = hit.id; return; }
+    const icon = ICONS[r.icon] ? r.icon : mapIcon(r.icon);
+    const made = {
+      id: nextId++, k: `imp${r.id}`, i18n: null, name, type,
+      icon, color: normalizeImportColor(r.color),
+      order: Number(r.index || r.order) || newCats.length + 1,
+    };
+    newCats.push(made);
+    catByOldId[r.id] = made.id;
+  });
+  return { catByOldId, newCats, nextId };
+}
+
+function buildBackupImportPlan(sections, warnings, text, { existingCats = [], existingKeys = new Set() } = {}) {
+  const tx = sections.TRANSACTIONS || [];
+  const rawCats = sections.CATEGORIES || [];
+  const fixedRows = sections.FIXED_COSTS || [];
+  const fxRows = sections.EXCHANGE_RATES || [];
+  const { catByOldId, newCats } = buildCategoryImport(rawCats, existingCats);
+  const allCats = [...existingCats, ...newCats];
+  const findCatId = (id, name, type) => {
+    if (catByOldId[id]) return catByOldId[id];
+    const hit = findImportCategory(allCats, type, name);
+    if (hit) return hit.id;
+    return allCats.find((c) => c.type === type && c.k === (type === "income" ? "etc" : "misc"))?.id || allCats[0]?.id || 1;
+  };
+
+  const rows = [], errors = [];
+  let duplicate = 0;
+  tx.forEach((r, i) => {
+    const line = i + 1;
+    const date = normalizeDate(r.date);
+    if (!date) { errors.push({ line, why: "date", raw: r.date }); return; }
+    const amount = Number(String(r.amount || "").trim());
+    if (!Number.isFinite(amount) || amount <= 0) { errors.push({ line, why: "amount", raw: r.amount }); return; }
+    const cur = String(r.currency || "").trim().toUpperCase();
+    if (!CUR[cur]) { errors.push({ line, why: "currency", raw: r.currency }); return; }
+    const type = importType(r.type);
+    const key = `backup|${r.id || [date, type, amount, cur, r.categoryId, r.note].join("|")}`;
+    if (existingKeys.has(key)) { duplicate++; return; }
+    rows.push({
+      key, line, type, amount, cur,
+      cat: findCatId(r.categoryId, r.category, type),
+      date, name: r.note || "", i18n: null,
+      createdAt: null, updatedAt: null, fromFixed: false,
+      fxd: normalizeDate(r.rateDate) || null,
+    });
+  });
+
+  const fixedToCreate = fixedRows.map((r, i) => {
+    const type = importType(r.type);
+    const cur = CUR[String(r.currency || "").trim().toUpperCase()] ? String(r.currency).trim().toUpperCase() : "JPY";
+    const amount = Number(String(r.amount || "").trim());
+    return {
+      id: `fix_${hashText(text)}_${i}`, i18n: null, name: r.name || "",
+      type, amount: toMinor(Number.isFinite(amount) ? amount : 0, cur), cur,
+      cat: findCatId(r.categoryId, r.category, type),
+      day: Math.min(31, Math.max(1, Number(r.day) || 1)),
+      start: String(r.startDate || TODAY.slice(0, 7)).slice(0, 7),
+      on: String(r.enabled || "1") !== "0",
+    };
+  }).filter((f) => f.amount > 0 && f.name);
+
+  const fxToMerge = {};
+  fxRows.forEach((r) => {
+    const date = normalizeDate(r.date);
+    const code = String(r.currency || "").trim().toUpperCase();
+    const val = Number(String(r.rateToJPY || "").trim());
+    if (!date || !CUR[code] || !Number.isFinite(val) || val <= 0) return;
+    fxToMerge[date] = { ...(fxToMerge[date] || {}), [code]: Math.round(val * FX_SCALE), __src: r.source || "backup" };
+  });
+
+  return {
+    kind: "backup",
+    hash: hashText(text),
+    warnings,
+    catsToCreate: newCats,
+    fixedToCreate,
+    fxToMerge,
+    catMap: catByOldId,
+    rows, future: [], errors, suspicious: [], duplicate,
+    stats: {
+      total: tx.length,
+      ready: rows.length,
+      future: 0,
+      cats: rawCats.length,
+      rules: fixedToCreate.length,
+      suspicious: 0,
+      errors: errors.length,
+      duplicate,
+    },
+  };
+}
 
 /* 把解析结果变成一份导入计划。cutoff 之后的记录一律排除 */
 function buildImportPlan(text, { cutoff = TODAY, existingCats = [], existingKeys = new Set() } = {}) {
   const { sections, warnings } = parseSections(text);
+  if ((sections.TRANSACTIONS || []).length) return buildBackupImportPlan(sections, warnings, text, { existingCats, existingKeys });
   const daily = sections.DAILY_DATAS || [];
   const rawCats = sections.CATEGORIES || [];
   const fixedRules = sections.FIXED_COST_SETTINGS || [];
 
   /* 分类:名称 + 收支类型 作为匹配键,已有的复用 */
-  const catByOldId = {};
-  const newCats = [];
-  let nextId = Math.max(0, ...existingCats.map((c) => c.id)) + 1;
-  rawCats.forEach((r) => {
-    const type = String(r.type) === "1" ? "income" : "expense";
-    const name = (r.name || "").trim();
-    if (!name) return;
-    const hit = findImportCategory(existingCats, type, name);
-    if (hit) { catByOldId[r.id] = hit.id; return; }
-    const made = {
-      id: nextId++, k: `imp${r.id}`, i18n: null, name, type,
-      icon: mapIcon(r.icon), color: normalizeImportColor(r.color),
-      order: Number(r.index) || newCats.length + 1,
-    };
-    newCats.push(made);
-    catByOldId[r.id] = made.id;
-  });
+  const { catByOldId, newCats, nextId: nextCatId } = buildCategoryImport(rawCats, existingCats);
+  let nextId = nextCatId;
 
   /* 「未分类」兜底,只在真的用到时才创建 */
   let fallbackId = null;
@@ -808,7 +901,7 @@ function buildImportPlan(text, { cutoff = TODAY, existingCats = [], existingKeys
   daily.forEach((r) => {
     const memo = (r.memo || "").trim();
     if (!memo) return;
-    const t = String(r.type) === "1" ? "inc" : "exp";
+    const t = importType(r.type) === "income" ? "inc" : "exp";
     memoUse[memo] = memoUse[memo] || { exp: 0, inc: 0 };
     memoUse[memo][t]++;
   });
@@ -833,9 +926,9 @@ function buildImportPlan(text, { cutoff = TODAY, existingCats = [], existingKeys
     let warnedCat = false;
     if (!catId) { catId = ensureFallback(); warnedCat = true; }
 
-    const type = String(r.type) === "1" ? "income" : "expense";
+    const type = importType(r.type);
     const srcCat = rawCats.find((c) => String(c.id) === String(r.categoryId));
-    const catType = srcCat ? (String(srcCat.type) === "1" ? "income" : "expense") : type;
+    const catType = srcCat ? importType(srcCat.type) : type;
 
     /* 规则一:账目类型与所属分类的类型不一致 */
     const typeClash = srcCat && catType !== type;
@@ -864,6 +957,8 @@ function buildImportPlan(text, { cutoff = TODAY, existingCats = [], existingKeys
     hash: hashText(text),
     warnings,
     catsToCreate: newCats,
+    fixedToCreate: [],
+    fxToMerge: {},
     catMap: catByOldId,
     rows, future, errors, suspicious, duplicate,
     stats: {
@@ -2416,7 +2511,7 @@ function CatEditor({ cats, setCats, onBack }) {
 /* ═════════════════════════════════════════════════════════
    导入（界面骨架）
    ═════════════════════════════════════════════════════════ */
-function Importer({ onBack, cur, favs, cats, setCats, txns, onImport, batches, addBatch, fx }) {
+function Importer({ onBack, cur, favs, cats, setCats, setFixed, txns, onImport, batches, addBatch, fx, setFx }) {
   const { t } = useT(); const L = useLabel();
   const [stage, setStage] = useState("pick");        // pick | preview | done
   const [file, setFile] = useState(null);
@@ -2452,11 +2547,15 @@ function Importer({ onBack, cur, favs, cats, setCats, txns, onImport, batches, a
         .map((r) => ({
           id: `imp_${plan.hash}_${r.key}`,
           type: oddMode === "expense" && oddKeys.has(r.key) ? "expense" : r.type,
-          amount: toMinor(r.amount, impCur), cur: impCur, cat: r.cat, date: r.date,
-          name: r.name, i18n: null, fx: null, fxd: ratesOn(fx, r.date)?.at ?? null,
+          amount: toMinor(r.amount, r.cur || impCur), cur: r.cur || impCur, cat: r.cat, date: r.date,
+          name: r.name, i18n: null, fx: null, fxd: r.fxd || (ratesOn(fx, r.date)?.at ?? null),
           srcKey: r.key, srcBatch: plan.hash,
         }));
       if (plan.catsToCreate.length) setCats((cs) => [...cs, ...plan.catsToCreate]);
+      if (plan.fixedToCreate?.length) setFixed((fs) => [...fs, ...plan.fixedToCreate]);
+      if (Object.keys(plan.fxToMerge || {}).length) {
+        setFx((f) => Object.entries(plan.fxToMerge).reduce((acc, [date, rates]) => mergeDay(acc, date, rates, rates.__src || "backup"), f));
+      }
       onImport(rows);
       addBatch({
         hash: plan.hash, file: file?.name || "", cur: impCur, at: TODAY,
@@ -2526,14 +2625,14 @@ function Importer({ onBack, cur, favs, cats, setCats, txns, onImport, batches, a
             {plan.stats.errors > 0 && <Stat k={t("i.errRows")} v={plan.stats.errors} warn />}
           </div>
 
-          <div className="flex items-center gap-2 px-4 py-3.5 mt-3" style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
+          {plan.kind !== "backup" && <div className="flex items-center gap-2 px-4 py-3.5 mt-3" style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
             <span className="flex-1 min-w-0 truncate" style={{ fontSize: 14, color: C.ink }}>{t("i.defCur")}</span>
             <button onClick={() => setCurSheet(true)} className="flex items-center gap-1 rounded-full px-2.5 py-1 shrink-0" style={{ background: C.soft }}>
               <span style={{ fontSize: 13 }}>{flag(impCur)}</span>
               <span className="num" style={{ fontSize: 11, fontWeight: 700, color: C.ink2 }}>{impCur}</span>
               <ChevronDown size={12} color={C.ink3} />
             </button>
-          </div>
+          </div>}
 
           {plan.suspicious.length > 0 && (
             <>
@@ -2580,7 +2679,7 @@ function Importer({ onBack, cur, favs, cats, setCats, txns, onImport, batches, a
                     <div className="num truncate" style={{ fontSize: 11, color: C.ink3 }}>{r.date} · {L(c)}</div>
                   </div>
                   <span className="num shrink-0" style={{ fontSize: 13.5, color: r.type === "expense" ? C.ink : C.inn }}>
-                    {r.type === "expense" ? "" : "+"}{money(toMinor(r.amount, impCur), impCur)}
+                    {r.type === "expense" ? "" : "+"}{money(toMinor(r.amount, r.cur || impCur), r.cur || impCur)}
                   </span>
                 </div>
               );
@@ -2655,9 +2754,9 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
     });
     out.push("");
     out.push("#FIXED_COSTS");
-    out.push(csvLine(["id", "name", "type", "amount", "currency", "categoryId", "category", "enabled", "startDate"]));
+    out.push(csvLine(["id", "name", "type", "amount", "currency", "categoryId", "category", "day", "enabled", "startDate"]));
     [...fixed].forEach((f) => {
-      out.push(csvLine([f.id, L(f), f.type || "expense", fromMinor(f.amount, f.cur || cur), f.cur || cur, f.cat, L(catById.get(f.cat)), f.on ? "1" : "0", f.start || ""]));
+      out.push(csvLine([f.id, L(f), f.type || "expense", fromMinor(f.amount, f.cur || cur), f.cur || cur, f.cat, L(catById.get(f.cat)), f.day || 1, f.on ? "1" : "0", f.start || ""]));
     });
     out.push("");
     out.push("#EXCHANGE_RATES");
@@ -2961,8 +3060,8 @@ export default function App() {
     sub === "fixed"  ? <FixedCosts fixed={fixed} setFixed={setFixed} cats={cats} txns={txns} onCatchUp={catchUp} onBack={() => setSub(null)} cur={cur} fx={fx} /> :
     sub === "cats"   ? <CatEditor cats={cats} setCats={setCats} onBack={() => setSub(null)} /> :
     sub === "fx"     ? <FxScreen fx={fx} setFx={setFx} cur={cur} favs={favs} onBack={() => setSub(null)} /> :
-    sub === "import" ? <Importer onBack={() => setSub(null)} cur={cur} favs={favs} cats={cats} setCats={setCats}
-                         txns={txns} onImport={importTxns} fx={fx}
+    sub === "import" ? <Importer onBack={() => setSub(null)} cur={cur} favs={favs} cats={cats} setCats={setCats} setFixed={setFixed}
+                         txns={txns} onImport={importTxns} fx={fx} setFx={setFx}
                          batches={batches} addBatch={(b) => setBatches((bs) => [...bs, b])} /> :
     tab === "record" ? <Record cats={cats} quicks={quicks} txns={txns} onSave={add} cur={cur} setCur={setCur}
                          goQuick={() => setSub("quick")} goCats={() => setSub("cats")}
