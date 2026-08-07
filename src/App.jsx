@@ -2441,10 +2441,19 @@ function CatEditor({ cats, setCats, onBack }) {
   if (draft) return (
     <div className="flex flex-col h-full" style={{ background: C.page }}>
       <Bar title={t("c.new")} left={<Back on={() => setDraft(null)} />} />
-      <div className="flex-1 overflow-y-auto">
+      <div className="shrink-0">
         <input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder={t("c.namePh")}
           className="w-full px-4 py-3.5 outline-none" style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}`, fontSize: 16 }} />
-        <div className="px-4 pt-4 pb-2"><span className="lab">{t("c.icon")}</span></div>
+        <div className="px-4 pt-3 pb-2"><span className="lab">{t("c.color")}</span></div>
+        <div className="grid grid-cols-8 gap-2 px-4 pb-3">
+          {PICK_COLORS.map((c) => (
+            <button key={c} onClick={() => setDraft({ ...draft, color: c })} className="rounded-lg"
+              style={{ aspectRatio: "1", background: c, outline: draft.color === c ? `2px solid ${C.ink}` : "none", outlineOffset: 2 }} />
+          ))}
+        </div>
+      </div>
+      <div className="px-4 pt-2 pb-2 shrink-0" style={{ borderTop: `1px solid ${C.hair}` }}><span className="lab">{t("c.icon")}</span></div>
+      <div className="flex-1 overflow-y-auto pb-3">
         {ICON_GROUPS.map((g) => (
           <div key={g.key}>
             <div className="px-4 pt-2 pb-1.5" style={{ fontSize: 11, color: C.ink3 }}>{t(g.key)}</div>
@@ -2463,21 +2472,14 @@ function CatEditor({ cats, setCats, onBack }) {
             </div>
           </div>
         ))}
-        <div className="px-4 pt-4 pb-2"><span className="lab">{t("c.color")}</span></div>
-        <div className="grid grid-cols-8 gap-2 px-4">
-          {PICK_COLORS.map((c) => (
-            <button key={c} onClick={() => setDraft({ ...draft, color: c })} className="rounded-lg"
-              style={{ aspectRatio: "1", background: c, outline: draft.color === c ? `2px solid ${C.ink}` : "none", outlineOffset: 2 }} />
-          ))}
-        </div>
-        <div className="p-4">
-          <button onClick={() => {
-            if (!draft.name.trim()) return;
-            setCats((cs) => [...cs, { ...draft, id: Math.max(...cs.map((c) => c.id)) + 1, k: `c${Date.now()}`, i18n: null,
-              name: draft.name.trim(), order: cs.filter((c) => c.type === draft.type).length + 1 }]);
-            setDraft(null);
-          }} className="w-full rounded-lg py-3" style={{ background: C.brand, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: C.R }}>{t("g.save")}</button>
-        </div>
+      </div>
+      <div className="p-4 shrink-0" style={{ background: C.surface, borderTop: `1px solid ${C.hair}` }}>
+        <button onClick={() => {
+          if (!draft.name.trim()) return;
+          setCats((cs) => [...cs, { ...draft, id: Math.max(...cs.map((c) => c.id)) + 1, k: `c${Date.now()}`, i18n: null,
+            name: draft.name.trim(), order: cs.filter((c) => c.type === draft.type).length + 1 }]);
+          setDraft(null);
+        }} className="w-full rounded-lg py-3" style={{ background: C.brand, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: C.R }}>{t("g.save")}</button>
       </div>
     </div>
   );
