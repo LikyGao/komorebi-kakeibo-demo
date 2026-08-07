@@ -1337,7 +1337,8 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
         </Row>
 
         <div className={shake ? "nudge" : ""}>
-          <Row label={t(type === "expense" ? "r.rowExpense" : "r.rowIncome")}>
+          <div className="flex items-center gap-2.5 px-3.5 py-3"
+            style={{ borderBottom: `1px solid ${C.hair}`, background: C.surface }}>
             <button onClick={() => setSheet("cur")} className="flex items-center gap-1 rounded-md px-2 py-1 shrink-0" style={{ background: C.soft }}>
               <span className="num" style={{ fontSize: 12, fontWeight: 600, color: C.ink2 }}>{cur}</span>
               <span className="whitespace-nowrap" style={{ fontSize: 13.5, color: C.ink }}>{t(`cur.${cur}`)}</span>
@@ -1347,21 +1348,21 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               inputMode={dec === 0 ? "numeric" : "decimal"} placeholder="0"
               className="num flex-1 min-w-0 bg-transparent outline-none text-right"
               style={{ fontSize: 28, fontWeight: 600, color: amt ? (type === "expense" ? C.out : C.inn) : "#CBD2D9" }} />
-          </Row>
+          </div>
         </div>
 
-        <Row label={t("r.rowCategory")} last>
-          <button onClick={() => setSheet("cat")} className="min-w-0 flex items-center gap-2 px-2 py-1.5"
+        <div className="flex items-center gap-2.5 px-3.5 py-3" style={{ background: C.surface }}>
+          <button onClick={() => setSheet("cat")} className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5"
             style={{ borderRadius: C.r, background: C.soft }}>
             <Tile icon={cObj?.icon} color={cObj?.color} size={26} ico={14} />
             <span className="truncate" style={{ fontSize: 15, fontWeight: 500, color: C.ink }}>{L(cObj)}</span>
             <ChevronDown size={15} color={C.ink3} className="shrink-0" />
           </button>
-          <button onClick={manual} className="ml-auto shrink-0 rounded-lg px-6 py-2.5"
+          <button onClick={manual} className="shrink-0 rounded-lg px-5 py-2.5"
             style={{ background: C.brand, color: "#fff", fontSize: 15.5, fontWeight: 600, borderRadius: C.R }}>
             {t("r.save")}
           </button>
-        </Row>
+        </div>
 
         <div className="px-3.5 pt-3 pb-2">
           <div className="flex flex-wrap items-center gap-1.5">
