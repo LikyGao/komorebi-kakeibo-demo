@@ -1419,24 +1419,28 @@ function FxScreen({ fx, setFx, cur, favs, onBack }) {
   const codes = [...new Set([cur, ...(favs || DEFAULT_FAVS)])];
   const copy = {
     zh: [
-      "这里的汇率只用于多币种账目的参考合计、账本热力图和统计折算，不是银行、信用卡或支付平台的实时成交汇率。",
-      "点「更新」时，应用会优先读取 open.er-api.com 的 JPY 基准公开汇率；如果失败，会尝试 Frankfurter。公开接口通常有延迟，所以请把它当作参考值。",
-      "更新只会写入接口返回日期的汇率。已经记录的账目会保留当时钉住的汇率日期，不会因为之后更新而改变；缺失日期会沿用最近一个已有汇率日。",
+      "汇率来自 ExchangeRate-API 的公开参考汇率，并非银行实时成交汇率。实际刷卡、换汇、转账时，请以银行、发卡组织或支付平台的最终汇率为准。",
+      "这里的汇率只用于多币种账目的参考合计、账本热力图和统计折算，不适合用于交易、结算或投资判断。",
+      "点「更新」时，应用会尝试获取最新公开参考汇率。公开接口通常有延迟，所以请把它当作记账统计用的参考值。",
+      "更新只会影响之后的参考统计。已经记录的账目会保留当时钉住的汇率日期，不会因为之后更新而改变。",
     ],
     ja: [
-      "ここでのレートは複数通貨の参考合計と統計換算にだけ使います。銀行、カード、決済サービスのリアルタイム取引レートではありません。",
-      "更新時は open.er-api.com の JPY 基準レートを優先し、失敗した場合は Frankfurter を試します。公開 API なので遅延がある前提で見てください。",
-      "更新は API が返した日付のレートだけを書き込みます。記録済みの明細は当時固定されたレート日付を保持し、後から変わりません。",
+      "為替レートは ExchangeRate-API の公開参考レートです。銀行のリアルタイム取引レートではありません。カード、両替、送金の実際のレートは銀行、カード会社、決済サービスの最終レートを確認してください。",
+      "このレートは複数通貨の参考合計、ヒートマップ、統計換算にだけ使います。取引、決済、投資判断には向いていません。",
+      "更新すると最新の公開参考レートを取得します。公開 API には遅延があるため、記帳統計用の参考値として扱ってください。",
+      "更新しても記録済みの明細は当時固定されたレート日付を保持し、後から変わりません。",
     ],
     en: [
-      "These rates are only for reference totals, heatmaps, and analytics across currencies. They are not real-time bank, card, or payment exchange rates.",
-      "Update first tries the public JPY-based rates from open.er-api.com, then falls back to Frankfurter if needed. Public feeds can lag, so treat them as reference values.",
-      "Updating writes rates for the date returned by the feed. Existing entries keep the rate date they were recorded with, so past records do not change.",
+      "Rates come from ExchangeRate-API's public reference feed. They are not real-time bank rates. For card payments, currency exchange, or transfers, use the final rate from your bank, card network, or payment provider.",
+      "These rates are only for reference totals, heatmaps, and analytics across currencies. They are not suitable for trading, settlement, or investment decisions.",
+      "Update tries to fetch the latest public reference rates. Public feeds can lag, so treat them as bookkeeping estimates.",
+      "Updating does not change entries already recorded. Existing entries keep the rate date they were saved with.",
     ],
     ko: [
-      "이 환율은 여러 통화의 참고 합계와 통계 환산에만 사용됩니다. 은행, 카드, 결제 서비스의 실시간 거래 환율이 아닙니다.",
-      "업데이트 시 open.er-api.com 의 JPY 기준 공개 환율을 먼저 사용하고, 실패하면 Frankfurter 를 시도합니다. 공개 API라 지연될 수 있습니다.",
-      "업데이트는 API가 반환한 날짜의 환율만 저장합니다. 이미 기록된 항목은 당시 고정된 환율 날짜를 유지하므로 나중에 바뀌지 않습니다.",
+      "환율은 ExchangeRate-API의 공개 참고 환율입니다. 은행의 실시간 거래 환율이 아닙니다. 카드 결제, 환전, 송금의 실제 환율은 은행, 카드사, 결제 서비스의 최종 환율을 확인하세요.",
+      "이 환율은 여러 통화의 참고 합계, 히트맵, 통계 환산에만 사용됩니다. 거래, 정산, 투자 판단에는 적합하지 않습니다.",
+      "업데이트를 누르면 최신 공개 참고 환율을 가져옵니다. 공개 API는 지연될 수 있으므로 가계부 통계용 참고값으로 봐 주세요.",
+      "업데이트해도 이미 기록된 항목은 당시 저장된 환율 날짜를 유지하며 나중에 바뀌지 않습니다.",
     ],
   }[lang] || [];
 
@@ -1475,24 +1479,6 @@ function FxScreen({ fx, setFx, cur, favs, onBack }) {
               <p key={i} style={{ margin: 0, fontSize: 12.5, color: C.ink2, lineHeight: 1.65 }}>{line}</p>
             ))}
           </div>
-        </div>
-
-        <div className="px-4 pt-2 pb-2"><span className="lab">{t("x.current")}</span></div>
-        <div className="mx-3.5 mb-4 overflow-hidden" style={{ background: C.surface, borderRadius: C.R, boxShadow: `inset 0 0 0 1px ${C.hair}` }}>
-          {codes.map((code, i) => {
-            const a = rateOf(snap?.rates, code), b = rateOf(snap?.rates, cur);
-            const val = a && b ? a / b : null;
-            return (
-              <div key={code} className="flex items-center gap-2 px-3 py-3" style={{ borderTop: i ? `1px solid ${C.soft}` : "none" }}>
-                <span style={{ fontSize: 18, width: 22 }}>{flag(code)}</span>
-                <span className="num" style={{ width: 36, fontSize: 12, fontWeight: 700, color: C.ink2 }}>{code}</span>
-                <span className="truncate" style={{ fontSize: 13, color: C.ink }}>{t(`cur.${code}`)}</span>
-                <span className="num ml-auto" style={{ fontSize: 12.5, fontWeight: 600, color: C.ink }}>
-                  {val == null ? "—" : `1 ${code} = ${fxFmt(val)} ${cur}`}
-                </span>
-              </div>
-            );
-          })}
         </div>
       </div>
       {toast && (
