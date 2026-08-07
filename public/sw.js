@@ -1,4 +1,4 @@
-const CACHE_NAME = "komorebi-kakeibo-v9";
+const CACHE_NAME = "komorebi-kakeibo-v10";
 const APP_SHELL = [
   "./",
   "./index.html",

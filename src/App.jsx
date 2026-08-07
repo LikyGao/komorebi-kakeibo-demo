@@ -50,8 +50,8 @@ const F_NUM = "'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace";
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 *{-webkit-tap-highlight-color:transparent}
-.num{font-family:${F_NUM};font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.lab{font-size:11px;font-weight:600;letter-spacing:.06em;color:${C.ink3}}
+.num{font-family:${F_NUM};font-variant-numeric:tabular-nums;letter-spacing:0}
+.lab{font-size:12px;font-weight:600;letter-spacing:.04em;color:${C.ink3}}
 .card{background:${C.surface};border-radius:${C.R}px;box-shadow:0 1px 2px rgba(31,41,51,.05),0 4px 12px rgba(31,41,51,.04)}
 .tile{display:flex;align-items:center;justify-content:center;border-radius:11px;flex-shrink:0}
 @keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
@@ -981,7 +981,7 @@ const CatTag = ({ color, children }) => (
 );
 const Bar = ({ title, left, right }) => (
   <div className="flex items-center gap-2 px-4 shrink-0" style={{ height: 50, borderBottom: `1px solid ${C.hair}`, background: C.surface }}>
-    {left}<span style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{title}</span>
+    {left}<span style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>{title}</span>
     <div className="ml-auto flex items-center gap-1">{right}</div>
   </div>
 );
@@ -992,7 +992,7 @@ const Seg = ({ value, onChange, items, sm }) => (
   <div className="flex rounded-full" style={{ background: C.soft, padding: 3 }}>
     {items.map((it) => (
       <button key={it.v} onClick={() => onChange(it.v)} className="rounded-full whitespace-nowrap"
-        style={{ padding: sm ? "3px 11px" : "5px 16px", fontSize: sm ? 11 : 12.5, fontWeight: 600,
+        style={{ padding: sm ? "4px 12px" : "5px 16px", fontSize: sm ? 12.5 : 13.5, fontWeight: 600,
           background: value === it.v ? C.surface : "transparent", color: value === it.v ? C.ink : C.ink3,
           boxShadow: value === it.v ? "0 1px 3px rgba(31,41,51,.12)" : "none" }}>{it.t}</button>
     ))}
@@ -1013,11 +1013,11 @@ const MainHint = ({ code, cls = "" }) => {
 
 const Row = ({ label, children, last }) => {
   const { lang } = useT();
-  const w = lang === "en" ? 62 : 34;
+  const w = lang === "en" ? 68 : 40;
   return (
     <div className="flex items-center gap-2.5 px-3.5 py-3"
       style={{ borderBottom: last ? "none" : `1px solid ${C.hair}`, background: C.surface }}>
-      <span className="shrink-0" style={{ width: w, fontSize: 11.5, fontWeight: 500, color: C.ink3, lineHeight: 1.25 }}>{label}</span>
+      <span className="shrink-0" style={{ width: w, fontSize: 13, fontWeight: 500, color: C.ink3, lineHeight: 1.25 }}>{label}</span>
       {children}
     </div>
   );
@@ -1026,7 +1026,7 @@ const Sheet = ({ title, onClose, children }) => { const { t } = useT(); return (
   <div className="absolute inset-0 z-20 flex flex-col justify-end" style={{ background: "rgba(20,22,26,.32)" }} onClick={onClose}>
     <div className="up" style={{ background: C.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: "76%" }} onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center px-4 py-3" style={{ borderBottom: `1px solid ${C.soft}` }}>
-        <span style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{title}</span>
+        <span style={{ fontSize: 16.5, fontWeight: 600, color: C.ink }}>{title}</span>
         <button onClick={onClose} className="ml-auto p-1" aria-label={t("g.close")}><X size={18} color={C.ink2} /></button>
       </div>
       <div className="overflow-y-auto" style={{ maxHeight: "62vh" }}>{children}</div>
@@ -1046,15 +1046,15 @@ const CurrencySheet = ({ value, onPick, onClose, title, favs }) => {
       <div className="px-3 pt-2 pb-1">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("x.search")}
           className="w-full px-3 py-2 outline-none"
-          style={{ background: C.soft, borderRadius: C.r, fontSize: 13.5, color: C.ink }} />
+          style={{ background: C.soft, borderRadius: C.r, fontSize: 15, color: C.ink }} />
       </div>
       {list.map((code) => (
         <button key={code} onClick={() => { onPick(code); onClose(); }} className="w-full flex items-center gap-3 px-4 py-3 text-left"
           style={{ borderBottom: `1px solid ${C.soft}` }}>
           <span style={{ fontSize: 22 }}>{flag(code)}</span>
-          <span className="num shrink-0" style={{ fontSize: 12, fontWeight: 700, color: C.ink2, width: 34 }}>{code}</span>
-          <span className="flex-1 truncate" style={{ fontSize: 14, color: C.ink }}>{t(`cur.${code}`)}</span>
-          <span className="num shrink-0" style={{ fontSize: 12, color: C.ink3 }}>{CUR[code].sign}</span>
+          <span className="num shrink-0" style={{ fontSize: 13, fontWeight: 700, color: C.ink2, width: 38 }}>{code}</span>
+          <span className="flex-1 truncate" style={{ fontSize: 15.5, color: C.ink }}>{t(`cur.${code}`)}</span>
+          <span className="num shrink-0" style={{ fontSize: 13, color: C.ink3 }}>{CUR[code].sign}</span>
           {value === code && <Check size={16} color={C.brand} strokeWidth={2.6} />}
         </button>
       ))}
@@ -1207,9 +1207,9 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
   return (
     <div className="flex flex-col h-full relative" style={{ background: C.page }}>
       <div className="flex items-center gap-2 px-3.5 shrink-0" style={{ height: 50, background: C.surface }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{t("nav.record")}</span>
+        <span style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>{t("nav.record")}</span>
         <span className="num truncate rounded-full px-2 py-0.5"
-          style={{ fontSize: 11, color: C.out, background: C.outSoft, fontWeight: 600 }}>
+          style={{ fontSize: 12, color: C.out, background: C.outSoft, fontWeight: 600 }}>
           {+date.slice(5, 7)}{t("r.month")} {money(monthSpent, cur)}
         </span>
         <div className="ml-auto shrink-0">
@@ -1221,8 +1221,8 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
       <div className="flex-1 overflow-y-auto">
         <Row label={t("r.date")}>
           <button onClick={() => shift(-1)} className="p-1 -ml-1" aria-label="−1"><ChevronLeft size={16} color={C.line} /></button>
-          <span className="num" style={{ fontSize: 14, color: C.ink }}>{date}</span>
-          <span style={{ fontSize: 11, color: future ? C.warnInk : C.ink3 }}>
+          <span className="num" style={{ fontSize: 16, color: C.ink }}>{date}</span>
+          <span style={{ fontSize: 12.5, color: future ? C.warnInk : C.ink3 }}>
             {t(`w${new Date(date + "T00:00:00").getDay()}`)}{future ? ` · ${t("r.future")}` : ""}
           </span>
           <button onClick={() => shift(1)} className="p-1" aria-label="+1">
@@ -1238,14 +1238,14 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
 
         <Row label={t("r.note")}>
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("r.notePh")}
-            className="flex-1 min-w-0 bg-transparent outline-none" style={{ fontSize: 14, color: C.ink }} />
+            className="flex-1 min-w-0 bg-transparent outline-none" style={{ fontSize: 16, color: C.ink }} />
         </Row>
 
         <div className={shake ? "nudge" : ""}>
           <Row label={t(type === "expense" ? "r.rowExpense" : "r.rowIncome")}>
             <button onClick={() => setSheet("cur")} className="flex items-center gap-1 rounded-md px-2 py-1 shrink-0" style={{ background: C.soft }}>
-              <span className="num" style={{ fontSize: 11, fontWeight: 600, color: C.ink2 }}>{cur}</span>
-              <span className="whitespace-nowrap" style={{ fontSize: 12, color: C.ink }}>{t(`cur.${cur}`)}</span>
+              <span className="num" style={{ fontSize: 12, fontWeight: 600, color: C.ink2 }}>{cur}</span>
+              <span className="whitespace-nowrap" style={{ fontSize: 13.5, color: C.ink }}>{t(`cur.${cur}`)}</span>
               <ChevronDown size={13} color={C.ink3} />
             </button>
             <input value={amt} onChange={(e) => setAmt(e.target.value.replace(dec === 0 ? /[^\d]/g : /[^\d.]/g, ""))}
@@ -1259,11 +1259,11 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
           <button onClick={() => setSheet("cat")} className="min-w-0 flex items-center gap-2 px-2 py-1.5"
             style={{ borderRadius: C.r, background: C.soft }}>
             <Tile icon={cObj?.icon} color={cObj?.color} size={26} ico={14} />
-            <span className="truncate" style={{ fontSize: 13.5, fontWeight: 500, color: C.ink }}>{L(cObj)}</span>
+            <span className="truncate" style={{ fontSize: 15, fontWeight: 500, color: C.ink }}>{L(cObj)}</span>
             <ChevronDown size={15} color={C.ink3} className="shrink-0" />
           </button>
           <button onClick={manual} className="ml-auto shrink-0 rounded-lg px-6 py-2.5"
-            style={{ background: C.brand, color: "#fff", fontSize: 14.5, fontWeight: 600, borderRadius: C.R }}>
+            style={{ background: C.brand, color: "#fff", fontSize: 15.5, fontWeight: 600, borderRadius: C.R }}>
             {t("r.save")}
           </button>
         </Row>
@@ -1278,8 +1278,8 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                   style={{ background: fxd ? `${c?.color}16` : C.surface,
                     boxShadow: `inset 0 0 0 ${fxd ? 1.5 : 1}px ${fxd ? c?.color : C.hair}` }}>
                   <Tile icon={c?.icon} color={c?.color} size={22} ico={12} />
-                  <span style={{ fontSize: 13, fontWeight: 500, color: C.ink }}>{L(q)}</span>
-                  {fxd && <span className="num" style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
+                  <span style={{ fontSize: 14.5, fontWeight: 500, color: C.ink }}>{L(q)}</span>
+                  {fxd && <span className="num" style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
                     {q.amount.toLocaleString("en-US")}{q.cur && q.cur !== cur ? ` ${q.cur}` : ""}</span>}
                 </button>
               );
@@ -1294,9 +1294,9 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
         <div style={{ height: 10 }} />
         <div className="px-3.5 pt-3 pb-2 flex items-center gap-1.5">
           <span className="lab shrink-0">{t("x.panel")}</span>
-          <span className="num truncate" style={{ fontSize: 10.5, color: C.ink3 }}>{snap?.at || "—"}</span>
+          <span className="num truncate" style={{ fontSize: 12, color: C.ink3 }}>{snap?.at || "—"}</span>
           <button onClick={updateFx} disabled={fxBusy} className="ml-auto shrink-0 flex items-center gap-1 rounded-full px-2.5 py-1"
-            style={{ background: fxBusy ? C.soft : C.ink, color: fxBusy ? C.ink3 : "#fff", fontSize: 11, fontWeight: 600 }}>
+            style={{ background: fxBusy ? C.soft : C.ink, color: fxBusy ? C.ink3 : "#fff", fontSize: 12.5, fontWeight: 600 }}>
             <RefreshCw size={11} strokeWidth={2.3} /> {fxBusy ? t("x.updating") : t("x.update")}
           </button>
         </div>
@@ -1311,7 +1311,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
             const fromVal = fxCalc.side === "from" ? fxCalc.value : (v ? fxFmt(edited / v) : "");
             const toVal = fxCalc.side === "to" ? fxCalc.value : (v ? fxFmt(edited * v) : "");
             const inputStyle = (side) => ({
-              width: "100%", fontSize: 14, fontWeight: 600, color: C.ink,
+              width: "100%", fontSize: 16, fontWeight: 600, color: C.ink,
               borderBottom: `1.5px solid ${fxCalc.side === side ? C.ink : C.line}`,
               paddingBottom: 1,
             });
@@ -1334,10 +1334,10 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                   <button onClick={() => setSheet({ k: "pair", i, side: "from" })}
                     className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
                     <span style={{ fontSize: 13 }}>{flag(pr.from)}</span>
-                    <span className="num" style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{pr.from}</span>
+                    <span className="num" style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{pr.from}</span>
                   </button>
                 </div>
-                <span className="num shrink-0" style={{ fontSize: 11, color: C.ink3 }}>=</span>
+                <span className="num shrink-0" style={{ fontSize: 12, color: C.ink3 }}>=</span>
                 <div style={boxStyle}>
                   <input value={toVal} inputMode="decimal" placeholder={v == null ? "—" : "0"}
                     onChange={(e) => setFxCalc({ side: "to", value: cleanDecimal(e.target.value) })}
@@ -1346,7 +1346,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                   <button onClick={() => setSheet({ k: "pair", i, side: "to" })}
                     className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
                     <span style={{ fontSize: 13 }}>{flag(pr.to)}</span>
-                    <span className="num" style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{pr.to}</span>
+                    <span className="num" style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{pr.to}</span>
                   </button>
                 </div>
                 {pairs.length > 1 && (
@@ -1360,12 +1360,12 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
           })}
           <button onClick={() => setPairs([...pairs, { from: pairs[pairs.length - 1]?.to || main, to: main }])}
             className="w-full flex items-center justify-center gap-1 py-2.5"
-            style={{ borderTop: `1px solid ${C.hair}`, color: C.ink3, fontSize: 12 }}>
+            style={{ borderTop: `1px solid ${C.hair}`, color: C.ink3, fontSize: 13.5 }}>
             <Plus size={13} /> {t("x.addPair")}
           </button>
         </div>
 
-        <div className="px-3.5 pt-1.5 pb-1" style={{ fontSize: 10, color: C.ink3, lineHeight: 1.5 }}>
+        <div className="px-3.5 pt-1.5 pb-1" style={{ fontSize: 11.5, color: C.ink3, lineHeight: 1.5 }}>
           {t("x.pinNote")}
         </div>
 
@@ -1386,7 +1386,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                 style={{ borderRadius: C.R, background: c.id === cat ? `${c.color}14` : C.surface,
                   boxShadow: c.id === cat ? `inset 0 0 0 2px ${c.color}` : `inset 0 0 0 1px ${C.hair}` }}>
                 <Tile icon={c.icon} color={c.color} size={34} ico={18} />
-                <span className="truncate w-full text-center" style={{ fontSize: 11, fontWeight: 500, color: C.ink }}>{L(c)}</span>
+                <span className="truncate w-full text-center" style={{ fontSize: 12.5, fontWeight: 500, color: C.ink }}>{L(c)}</span>
               </button>
             ))}
             <button onClick={() => { setSheet(null); goCats(); }}
@@ -1395,7 +1395,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               <span className="tile" style={{ width: 34, height: 34, background: "transparent" }}>
                 <SlidersHorizontal size={19} color={C.ink3} />
               </span>
-              <span className="truncate w-full text-center" style={{ fontSize: 11, color: C.ink3 }}>{t("g.edit")}</span>
+              <span className="truncate w-full text-center" style={{ fontSize: 12.5, color: C.ink3 }}>{t("g.edit")}</span>
             </button>
           </div>
         </Sheet>
@@ -2693,8 +2693,8 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
   const Item = ({ ti, s, on, tail }) => (
     <button onClick={on} className="w-full flex items-center gap-2 px-4 py-3.5 text-left" style={{ borderBottom: `1px solid ${C.soft}` }}>
       <div className="flex-1 min-w-0">
-        <div className="truncate" style={{ fontSize: 14.5, color: C.ink }}>{ti}</div>
-        {s && <div className="truncate" style={{ fontSize: 11.5, color: C.ink3, marginTop: 1 }}>{s}</div>}
+        <div className="truncate" style={{ fontSize: 15.5, color: C.ink }}>{ti}</div>
+        {s && <div className="truncate" style={{ fontSize: 12.5, color: C.ink3, marginTop: 1 }}>{s}</div>}
       </div>
       {tail}<ChevronRight size={15} color={C.hair} className="shrink-0" />
     </button>
@@ -2721,21 +2721,21 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
         <div className="px-4 pt-5 pb-2"><span className="lab">{t("s.groupGeneral")}</span></div>
         <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
           <button onClick={() => setSheet("cur")} className="w-full flex items-center gap-2 px-4 py-3.5 text-left" style={{ borderBottom: `1px solid ${C.soft}` }}>
-            <span className="flex-1 min-w-0 truncate" style={{ fontSize: 14.5, color: C.ink }}>{t("s.currency")}</span>
-            <span className="num shrink-0" style={{ fontSize: 11.5, fontWeight: 600, color: C.ink3 }}>{cur}</span>
-            <span className="shrink-0 truncate" style={{ fontSize: 13.5, color: C.ink2, maxWidth: 110 }}>{t(`cur.${cur}`)}</span>
+            <span className="flex-1 min-w-0 truncate" style={{ fontSize: 15.5, color: C.ink }}>{t("s.currency")}</span>
+            <span className="num shrink-0" style={{ fontSize: 12.5, fontWeight: 600, color: C.ink3 }}>{cur}</span>
+            <span className="shrink-0 truncate" style={{ fontSize: 14.5, color: C.ink2, maxWidth: 110 }}>{t(`cur.${cur}`)}</span>
             <ChevronRight size={15} color={C.hair} className="shrink-0" />
           </button>
           <button onClick={() => setSheet("favs")} className="w-full flex items-center gap-2 px-4 py-3.5 text-left"
             style={{ borderBottom: `1px solid ${C.soft}` }}>
-            <span className="flex-1 min-w-0 truncate" style={{ fontSize: 14.5, color: C.ink }}>{t("x.favs")}</span>
-            <span className="truncate" style={{ fontSize: 13 }}>{favs.slice(0, 5).map((c) => flag(c)).join("")}</span>
+            <span className="flex-1 min-w-0 truncate" style={{ fontSize: 15.5, color: C.ink }}>{t("x.favs")}</span>
+            <span className="truncate" style={{ fontSize: 14 }}>{favs.slice(0, 5).map((c) => flag(c)).join("")}</span>
             <ChevronRight size={15} color={C.hair} className="shrink-0" />
           </button>
           <button onClick={() => setSheet("lang")} className="w-full flex items-center gap-2 px-4 py-3.5 text-left">
             <Languages size={17} color={C.ink2} className="shrink-0" />
-            <span className="flex-1 min-w-0 truncate" style={{ fontSize: 14.5, color: C.ink }}>{t("s.language")}</span>
-            <span className="shrink-0" style={{ fontSize: 13.5, color: C.ink2 }}>{LANGS.find((l) => l.c === lang)?.native}</span>
+            <span className="flex-1 min-w-0 truncate" style={{ fontSize: 15.5, color: C.ink }}>{t("s.language")}</span>
+            <span className="shrink-0" style={{ fontSize: 14.5, color: C.ink2 }}>{LANGS.find((l) => l.c === lang)?.native}</span>
             <ChevronRight size={15} color={C.hair} className="shrink-0" />
           </button>
         </div>
@@ -2986,8 +2986,8 @@ export default function App() {
               const on = !sub && tab === k;
               return (
                 <button key={k} onClick={() => { setSub(null); setTab(k); }} className="flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 relative">
-                  <I size={19} color={on ? C.brand : "#B4BCC4"} strokeWidth={on ? 2.3 : 1.8} />
-                  <span className="truncate max-w-full px-0.5" style={{ fontSize: 10, fontWeight: on ? 600 : 400, color: on ? C.brand : "#B4BCC4" }}>{t(i18n)}</span>
+                  <I size={21} color={on ? C.brand : "#B4BCC4"} strokeWidth={on ? 2.3 : 1.8} />
+                  <span className="truncate max-w-full px-0.5" style={{ fontSize: 12, fontWeight: on ? 600 : 400, color: on ? C.brand : "#B4BCC4" }}>{t(i18n)}</span>
                   {k === "set" && pendingCount > 0 && (
                     <span style={{ position: "absolute", top: 6, right: "30%", width: 6, height: 6, borderRadius: 6, background: "#C0392B" }} />
                   )}
