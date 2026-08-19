@@ -1,6 +1,6 @@
-# Komorebi Kakeibo Demo
+# 多汇记账
 
-A deployable React demo for a personal kakeibo app.
+A deployable React PWA for personal multi-currency bookkeeping.
 
 ## Development
 

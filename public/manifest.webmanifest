@@ -1,7 +1,7 @@
 {
-  "name": "Komorebi Kakeibo",
-  "short_name": "Kakeibo",
-  "description": "A simple personal kakeibo app for recording expenses, income, budgets, and reports.",
+  "name": "多汇记账",
+  "short_name": "多汇记账",
+  "description": "一款用于多币种记账、汇率参考、预算和报表统计的个人记账应用。",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -48,7 +48,8 @@ ok('无 2070 年数据', rows.every(r=>!r.date.startsWith('20 70'.replace(' ',''
 
 console.log('\n【持久化往返】');
 (async()=>{
-  const data={lang:'ja',txns:rows.slice(0,5),cur:'CNY',favs:['CNY','JPY'],setupDone:true,batches:[{hash:plan.hash}]};
+  const data={lang:'ja',txns:rows.slice(0,5),cur:'CNY',favs:['CNY','JPY'],setupDone:true,batches:[{hash:plan.hash}],
+    fxPairs:[{id:'fxp_test',from:'USD',to:'JPY',side:'to',value:'160'}]};
   M.saveAll(data);
   await new Promise(r=>setTimeout(r,600));
   const back=await M.loadAll();
@@ -57,6 +58,7 @@ console.log('\n【持久化往返】');
   ok('交易保留', back.txns.length===5);
   ok('主币种保留', back.cur==='CNY');
   ok('批次保留(可识别重复文件)', back.batches[0].hash===plan.hash);
+  ok('汇率计算行保留', back.fxPairs?.[0]?.from==='USD' && back.fxPairs[0].to==='JPY' && back.fxPairs[0].value==='160');
   const p2=M.buildImportPlan(text,{cutoff:'2026-07-31',existingCats:[],existingKeys:new Set(back.txns.map(x=>x.srcKey))});
   ok('已存的记录再导入会跳过', p2.stats.duplicate===5, `dup=${p2.stats.duplicate}`);
   console.log(`\n通过 ${pass} / 失败 ${fail}`);

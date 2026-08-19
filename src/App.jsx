@@ -21,7 +21,7 @@ import {
   Shield, Cigarette, Bone, Church, Hourglass, Bell, Calendar, Clock,
   MoreHorizontal, Repeat, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronDown, Plus, ArrowLeft,
   Check, X, Trash2, NotebookText, BarChart3, Settings2, Upload, AlertTriangle,
-  GripVertical, RefreshCw, PieChart,
+  GripVertical, RefreshCw, PieChart, ArrowUp, ArrowDown,
 } from "lucide-react";
 
 /* toISOString() 返回 UTC 日期,在东九区会整体差一天,所以一律用本地年月日拼 */
@@ -81,6 +81,7 @@ const DICT = {
     "r.quick":"快捷输入","r.editQuick":"编辑快捷输入","r.save":"记一笔",
     "r.pickCat":"选择分类","r.future":"未来","r.pickCur":"结算币种","r.month":"月","r.editCat":"编辑",
     "r.saved":"已记","r.needAmount":"请输入金额","r.needAmountFirst":"先输入金额，再点",
+    "g.expand":"展开全部","g.collapse":"收起","g.up":"上移","g.down":"下移","rp.onlyNote":"当前仅显示 {code} {name} 支出",
     "l.less":"少","l.more":"多","l.only":"只看","l.noDay":"这一天没有记录",
     "a.vs":"较上月","a.nodata":"无数据","a.budget":"预算","a.pace":"竖线＝当月进度",
     "a.setBudget":"设置预算","a.total":"总预算","a.noMonth":"本月还没有记录",
@@ -139,6 +140,7 @@ const DICT = {
     "r.quick":"クイック入力","r.editQuick":"クイック入力を編集","r.save":"記録する",
     "r.pickCat":"分類を選ぶ","r.future":"未来","r.pickCur":"決済通貨","r.month":"月","r.editCat":"編集",
     "r.saved":"記録しました","r.needAmount":"金額を入力してください","r.needAmountFirst":"先に金額を入力してから",
+    "g.expand":"すべて表示","g.collapse":"閉じる","g.up":"上へ","g.down":"下へ","rp.onlyNote":"現在は {code} {name} の支出のみ表示",
     "l.less":"少","l.more":"多","l.only":"表示","l.noDay":"この日の記録はありません",
     "a.vs":"前月比","a.nodata":"データなし","a.budget":"予算","a.pace":"縦線＝今月の進捗",
     "a.setBudget":"予算を設定","a.total":"総予算","a.noMonth":"今月の記録はまだありません",
@@ -197,6 +199,7 @@ const DICT = {
     "r.quick":"Quick entry","r.editQuick":"Set up quick entry","r.save":"Add entry",
     "r.pickCat":"Choose a category","r.future":"future","r.pickCur":"Settlement currency","r.month":"/","r.editCat":"Edit",
     "r.saved":"Added","r.needAmount":"Enter an amount","r.needAmountFirst":"Enter an amount first, then tap",
+    "g.expand":"Show all","g.collapse":"Collapse","g.up":"Move up","g.down":"Move down","rp.onlyNote":"Showing only {code} {name} expenses",
     "l.less":"Less","l.more":"More","l.only":"Only","l.noDay":"Nothing on this day",
     "a.vs":"vs last month","a.nodata":"No data","a.budget":"Budget","a.pace":"Line marks month progress",
     "a.setBudget":"Set a budget","a.total":"Total budget","a.noMonth":"Nothing recorded this month",
@@ -255,6 +258,7 @@ const DICT = {
     "r.quick":"빠른 입력","r.editQuick":"빠른 입력 설정","r.save":"기록하기",
     "r.pickCat":"분류 선택","r.future":"미래","r.pickCur":"결제 통화","r.month":"월","r.editCat":"편집",
     "r.saved":"기록됨","r.needAmount":"금액을 입력하세요","r.needAmountFirst":"금액을 먼저 입력한 뒤 누르세요",
+    "g.expand":"전체 보기","g.collapse":"접기","g.up":"위로","g.down":"아래로","rp.onlyNote":"현재 {code} {name} 지출만 표시",
     "l.less":"적음","l.more":"많음","l.only":"보기","l.noDay":"이 날의 기록이 없습니다",
     "a.vs":"지난달 대비","a.nodata":"데이터 없음","a.budget":"예산","a.pace":"세로선＝이번 달 진행",
     "a.setBudget":"예산 설정","a.total":"총 예산","a.noMonth":"이번 달 기록이 없습니다",
@@ -1129,6 +1133,25 @@ const Sheet = ({ title, onClose, children }) => { const { t } = useT(); return (
   </div>
 ); };
 
+const CollapsibleList = ({ items, render, initial = 5, wrapStyle }) => {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const needs = items.length > initial;
+  const shown = needs && !open ? items.slice(0, initial) : items;
+  return (
+    <div style={wrapStyle}>
+      {shown.map((item, i) => render(item, i))}
+      {needs && (
+        <button onClick={() => setOpen(!open)}
+          className="w-full py-3"
+          style={{ borderTop: `1px solid ${C.soft}`, color: C.ink2, fontSize: 13.5, fontWeight: 600 }}>
+          {open ? t("g.collapse") : `${t("g.expand")} (${items.length})`}
+        </button>
+      )}
+    </div>
+  );
+};
+
 const CurrencySheet = ({ value, onPick, onClose, title, favs }) => {
   const { t } = useT();
   const [q, setQ] = useState("");
@@ -1244,7 +1267,7 @@ function CurrencySetup({ lang, onDone }) {
 /* ═════════════════════════════════════════════════════════
    记账页
    ═════════════════════════════════════════════════════════ */
-function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, setFx, main, goFx, favs }) {
+function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, setFx, main, goFx, favs, fxPairs, setFxPairs }) {
   const { t, lang } = useT(); const L = useLabel();
   const [type, setType] = useState("expense");
   const [date, setDate] = useState(TODAY);
@@ -1252,9 +1275,11 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
   const [amt, setAmt] = useState("");
   const [cat, setCat] = useState(1);
   const [sheet, setSheet] = useState(null);
-  /* 汇率对:初始一行,系统语言对应的币种换主币种 */
-  const [pairs, setPairs] = useState(() => [{ from: LANG_CUR[lang] || main, to: main }]);
-  const [fxCalc, setFxCalc] = useState({ side: "from", value: "1" });
+  const pairs = fxPairs?.length ? fxPairs : [{ id: "fxp_default", from: LANG_CUR[lang] || main, to: main, side: "from", value: "1" }];
+  const setPair = (i, patch) => setFxPairs((ps) => {
+    const base = ps?.length ? ps : pairs;
+    return base.map((p, z) => (z === i ? { ...p, ...patch } : p));
+  });
   const [toast, setToast] = useState(null);
   const [shake, setShake] = useState(false);
   const [fxBusy, setFxBusy] = useState(false);
@@ -1403,12 +1428,14 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
             const a = rateOf(r, pr.from), b = rateOf(r, pr.to);
             const v = a && b ? a / b : null;
             const same = pr.from === pr.to;
-            const edited = fxNum(fxCalc.value);
-            const fromVal = fxCalc.side === "from" ? fxCalc.value : (v ? fxFmt(edited / v) : "");
-            const toVal = fxCalc.side === "to" ? fxCalc.value : (v ? fxFmt(edited * v) : "");
+            const side = pr.side || "from";
+            const rawValue = pr.value ?? "1";
+            const edited = fxNum(rawValue);
+            const fromVal = side === "from" ? rawValue : (v ? fxFmt(edited / v) : "");
+            const toVal = side === "to" ? rawValue : (v ? fxFmt(edited * v) : "");
             const inputStyle = (side) => ({
               width: "100%", fontSize: 16, fontWeight: 600, color: C.ink,
-              borderBottom: `1.5px solid ${fxCalc.side === side ? C.ink : C.line}`,
+              borderBottom: `1.5px solid ${(pr.side || "from") === side ? C.ink : C.line}`,
               paddingBottom: 1,
             });
             const boxStyle = {
@@ -1419,12 +1446,12 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               columnGap: 6,
             };
             return (
-              <div key={i} className="px-2.5 py-2.5"
-                style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "center", gap: 8,
+              <div key={pr.id || i} className="px-2.5 py-2.5"
+                style={{ display: "grid", gridTemplateColumns: pairs.length > 1 ? "minmax(0, 1fr) auto minmax(0, 1fr) auto" : "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "center", gap: 8,
                   borderTop: i ? `1px solid ${C.hair}` : "none" }}>
                 <div style={boxStyle}>
                   <input value={fromVal} inputMode="decimal" placeholder="1"
-                    onChange={(e) => setFxCalc({ side: "from", value: cleanDecimal(e.target.value) })}
+                    onChange={(e) => setPair(i, { side: "from", value: cleanDecimal(e.target.value) })}
                     className="num bg-transparent outline-none text-right"
                     style={inputStyle("from")} />
                   <button onClick={() => setSheet({ k: "pair", i, side: "from" })}
@@ -1433,10 +1460,13 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                     <span className="num" style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{pr.from}</span>
                   </button>
                 </div>
-                <span className="num shrink-0" style={{ fontSize: 12, color: C.ink3 }}>=</span>
+                <button onClick={() => setPair(i, { from: pr.to, to: pr.from, side: "from", value: toVal || "1" })}
+                  className="num shrink-0 rounded-full"
+                  style={{ width: 26, height: 26, color: C.ink3, background: C.soft, fontSize: 12, fontWeight: 700 }}
+                  aria-label="swap">=</button>
                 <div style={boxStyle}>
                   <input value={toVal} inputMode="decimal" placeholder={v == null ? "—" : "0"}
-                    onChange={(e) => setFxCalc({ side: "to", value: cleanDecimal(e.target.value) })}
+                    onChange={(e) => setPair(i, { side: "to", value: cleanDecimal(e.target.value) })}
                     className="num bg-transparent outline-none text-right"
                     style={{ ...inputStyle("to"), color: same ? C.ink3 : C.ink }} />
                   <button onClick={() => setSheet({ k: "pair", i, side: "to" })}
@@ -1446,7 +1476,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                   </button>
                 </div>
                 {pairs.length > 1 && (
-                  <button onClick={() => setPairs(pairs.filter((_, z) => z !== i))} className="shrink-0 p-0.5 -mr-0.5"
+                  <button onClick={() => setFxPairs(pairs.filter((_, z) => z !== i))} className="shrink-0 p-0.5 -mr-0.5"
                     aria-label={t("x.removePair")}>
                     <X size={13} color={C.hair} />
                   </button>
@@ -1454,7 +1484,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               </div>
             );
           })}
-          <button onClick={() => setPairs([...pairs, { from: pairs[pairs.length - 1]?.to || main, to: main }])}
+          <button onClick={() => setFxPairs([...pairs, { id: `fxp_${Date.now()}`, from: pairs[pairs.length - 1]?.to || main, to: main, side: "from", value: "1" }])}
             className="w-full flex items-center justify-center gap-1 py-2.5"
             style={{ borderTop: `1px solid ${C.hair}`, color: C.ink3, fontSize: 13.5 }}>
             <Plus size={13} /> {t("x.addPair")}
@@ -1471,7 +1501,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
       {sheet === "cur" && <CurrencySheet favs={favs} value={cur} onPick={setCur} onClose={() => setSheet(null)} />}
       {sheet?.k === "pair" && (
         <CurrencySheet favs={favs} title={t("x.panel")} value={pairs[sheet.i][sheet.side]}
-          onPick={(v) => setPairs(pairs.map((p, z) => (z === sheet.i ? { ...p, [sheet.side]: v } : p)))}
+          onPick={(v) => setPair(sheet.i, { [sheet.side]: v })}
           onClose={() => setSheet(null)} />
       )}
       {sheet === "cat" && (
@@ -1686,7 +1716,7 @@ function Ledger({ txns, cats, y, m, setYm, cur, fx, main, onEdit, onDelete }) {
           </div>
         </div>
         {days.length === 0 && <div className="text-center py-16" style={{ fontSize: 13, color: C.ink3 }}>{t("l.noDay")}</div>}
-        {days.map((d) => {
+        <CollapsibleList items={days} initial={5} render={(d) => {
           const rs = shown.filter((x) => x.date === d);
           const net = rs.reduce((s, x) => { const v = convertOn(x.amount, x.cur, main, x.fxd || x.date, fx); return v == null ? s : s + (x.type === "expense" ? -v : v); }, 0);
           return (
@@ -1723,7 +1753,7 @@ function Ledger({ txns, cats, y, m, setYm, cur, fx, main, onEdit, onDelete }) {
               })}
             </div>
           );
-        })}
+        }} />
         <div style={{ height: 16 }} />
       </div>
       {editing && (
@@ -1946,7 +1976,7 @@ function Analysis({ txns, cats, budgets, setBudgets, y, m, setYm, cur, fx, goFx,
         </div>
         {rows.length === 0 ? <div className="text-center py-16" style={{ fontSize: 13, color: C.ink3 }}>{t("a.noMonth")}</div> : (
           <div style={{ background: C.surface, borderBottom: `1px solid ${C.hair}` }}>
-            {rows.map((r) => (
+            <CollapsibleList items={rows} initial={5} render={(r) => (
               <div key={r.c.id} className="px-4 py-3" style={{ borderTop: `1px solid ${C.soft}` }}>
                 <div className="flex items-center gap-2.5">
                   <Ico n={r.c.icon} c={r.c.color} s={16} />
@@ -1957,7 +1987,7 @@ function Analysis({ txns, cats, budgets, setBudgets, y, m, setYm, cur, fx, goFx,
                 <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: C.soft }}>
                   <div style={{ width: `${r.p}%`, height: "100%", background: r.c.color }} /></div>
               </div>
-            ))}
+            )} />
           </div>
         )}
         <div className="px-4 pt-5 pb-2 flex items-center gap-2">
@@ -1966,9 +1996,9 @@ function Analysis({ txns, cats, budgets, setBudgets, y, m, setYm, cur, fx, goFx,
         </div>
         <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
           <BRow label={t("a.total")} budget={budgets.__t} spent={totalSpent} onEdit={() => edit("__t", budgets.__t)} />
-          {cats.filter((c) => c.type === "expense").sort((a, b) => a.order - b.order).map((c) => (
+          <CollapsibleList items={cats.filter((c) => c.type === "expense").sort((a, b) => a.order - b.order)} initial={5} render={(c) => (
             <BRow key={c.id} label={L(c)} color={c.color} icon={c.icon} budget={budgets[c.id]} spent={spentOf(c.id)} onEdit={() => edit(c.id, budgets[c.id])} />
-          ))}
+          )} />
         </div>
         <div style={{ height: 16 }} />
       </div>
@@ -2028,6 +2058,7 @@ function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
     const raw = rows.reduce((a, x) => a + x.amount, 0);
     return { code: k, raw, conv: sumOn(rows, main, fx).total, n: rows.length };
   }).sort((a, b) => b.conv - a.conv);
+  const onlyNote = only ? t("rp.onlyNote").replace("{code}", only).replace("{name}", t(`cur.${only}`)) : null;
 
   const slices = useMemo(() => {
     const map = {};
@@ -2087,9 +2118,16 @@ function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
           <div className="text-center py-20" style={{ fontSize: 13, color: C.ink3 }}>{t("rp.empty")}</div>
         ) : (
           <>
-            <div className="flex justify-center py-5" style={{ background: C.surface, borderBottom: `1px solid ${C.hair}` }}>
+            <div className="py-5" style={{ background: C.surface, borderBottom: `1px solid ${C.hair}` }}>
+              <div className="flex justify-center">
               <Donut slices={slices} total={total} cur={unit} approx={false}
-                label={only ? `${only} ${t("rp.total")}` : t("rp.total")} />
+                label={only ? `${only} ${t("t.expense")}` : t("rp.total")} />
+              </div>
+              {onlyNote && (
+                <div className="px-4 text-center" style={{ fontSize: 12, color: C.ink3, marginTop: -6, lineHeight: 1.5 }}>
+                  {onlyNote}
+                </div>
+              )}
             </div>
 
             {missing.length > 0 && (
@@ -2097,7 +2135,7 @@ function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
             )}
 
             <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
-              {slices.map((r) => (
+              <CollapsibleList items={slices} initial={5} render={(r) => (
                 <div key={r.c.id} className="flex items-center gap-2.5 px-4 py-3" style={{ borderTop: `1px solid ${C.soft}` }}>
                   <span style={{ width: 8, height: 8, borderRadius: 8, background: r.c.color }} />
                   <Ico n={r.c.icon} c={r.c.color} s={16} />
@@ -2105,7 +2143,7 @@ function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
                   <span className="num ml-auto shrink-0" style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{money(r.v, unit)}</span>
                   <span className="num shrink-0" style={{ fontSize: 12, color: C.ink3, width: 40, textAlign: "right" }}>{r.p.toFixed(1)}%</span>
                 </div>
-              ))}
+              )} />
             </div>
           </>
         )}
@@ -2281,7 +2319,7 @@ function FixedCosts({ fixed, setFixed, cats, txns, onCatchUp, onBack, cur, fx })
         )}
 
         <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}` }}>
-          {fixed.map((f) => {
+          <CollapsibleList items={fixed} initial={6} render={(f) => {
             const c = cats.find((z) => z.id === f.cat);
             return (
               <div key={f.id} className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${C.soft}`, opacity: f.on ? 1 : 0.45 }}>
@@ -2299,7 +2337,7 @@ function FixedCosts({ fixed, setFixed, cats, txns, onCatchUp, onBack, cur, fx })
                 </button>
               </div>
             );
-          })}
+          }} />
         </div>
         {fixed.length === 0 && <div className="text-center py-16" style={{ fontSize: 13, color: C.ink3 }}>{t("f.empty")}</div>}
         <div className="px-4 py-4" style={{ fontSize: 11.5, color: C.ink3, lineHeight: 1.7 }}>{t("f.foot")}</div>
@@ -2317,6 +2355,14 @@ function QuickEditor({ quicks, setQuicks, cats, onBack, cur }) {
   const [curSheet, setCurSheet] = useState(false);
   const dnd = useDragSort(quicks.map((q) => q.id), (ids) =>
     setQuicks((qs) => ids.map((id) => qs.find((q) => q.id === id)).filter(Boolean)));
+  const moveQuick = (id, dir) => setQuicks((qs) => {
+    const i = qs.findIndex((q) => q.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= qs.length) return qs;
+    const next = [...qs];
+    [next[i], next[j]] = [next[j], next[i]];
+    return next;
+  });
   if (draft) {
     const isNew = draft.id == null;
     const list = cats.filter((c) => c.type === draft.type).sort((a, b) => a.order - b.order);
@@ -2393,12 +2439,14 @@ function QuickEditor({ quicks, setQuicks, cats, onBack, cur }) {
           <Plus size={20} color={C.ink} /></button>} />
       <div className="flex-1 overflow-y-auto">
         <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}` }}>
-          {quicks.map((q) => {
+          <CollapsibleList items={quicks} initial={6} render={(q) => {
             const c = cats.find((z) => z.id === q.cat);
+            const row = dnd.bindRow(q.id);
+            const idx = quicks.findIndex((z) => z.id === q.id);
             return (
-              <div key={q.id} ref={dnd.bindRow(q.id).ref}
+              <div key={q.id} ref={row.ref}
                 className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-                style={{ borderBottom: `1px solid ${C.soft}`, ...dnd.bindRow(q.id).style }}>
+                style={{ borderBottom: `1px solid ${C.soft}`, ...row.style }}>
                 <span {...dnd.bindHandle(q.id)} className="shrink-0 -ml-1 p-1">
                   <GripVertical size={16} color={dnd.drag?.id === q.id ? C.ink : C.line} />
                 </span>
@@ -2409,13 +2457,23 @@ function QuickEditor({ quicks, setQuicks, cats, onBack, cur }) {
                   <div className="truncate" style={{ fontSize: 11.5, color: C.ink3 }}>{L(c)} · {q.amount != null ? `${t("q.fixed")} · ${q.cur || cur}` : t("q.varies")}</div>
                 </button>
                 {q.amount != null && <span className="num shrink-0" style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{q.amount.toLocaleString("en-US")}</span>}
+                <div className="flex flex-col shrink-0">
+                  <button onClick={() => moveQuick(q.id, -1)} disabled={idx === 0} className="p-0.5"
+                    aria-label={t("g.up")} style={{ opacity: idx === 0 ? 0.25 : 1 }}>
+                    <ArrowUp size={14} color={C.ink3} />
+                  </button>
+                  <button onClick={() => moveQuick(q.id, 1)} disabled={idx === quicks.length - 1} className="p-0.5"
+                    aria-label={t("g.down")} style={{ opacity: idx === quicks.length - 1 ? 0.25 : 1 }}>
+                    <ArrowDown size={14} color={C.ink3} />
+                  </button>
+                </div>
                 <button onClick={() => setDraft({ ...q, name: L(q), cur: q.cur || cur, fixed: q.amount != null, amountStr: q.amount != null ? String(q.amount) : "" })}
                   className="shrink-0 p-1" aria-label={t("q.edit")}>
                   <ChevronRight size={15} color={C.line} />
                 </button>
               </div>
             );
-          })}
+          }} />
         </div>
         {quicks.length === 0 && <div className="text-center py-16" style={{ fontSize: 13, color: C.ink3 }}>{t("q.empty")}</div>}
       </div>
@@ -2491,7 +2549,7 @@ function CatEditor({ cats, setCats, onBack }) {
       <div className="px-4 py-3 flex"><Seg value={side} onChange={setSide} items={[{ v: "expense", t: t("t.expense") }, { v: "income", t: t("t.income") }]} /></div>
       <div className="flex-1 overflow-y-auto">
         <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}` }}>
-          {list.map((c) => {
+          <CollapsibleList items={list} initial={8} render={(c) => {
             const row = dnd.bindRow(c.id);
             return (
               <div key={c.id} ref={row.ref} className="flex items-center gap-3 px-4 py-3.5"
@@ -2504,7 +2562,7 @@ function CatEditor({ cats, setCats, onBack }) {
                 <ChevronRight size={15} color={C.hair} className="ml-auto shrink-0" />
               </div>
             );
-          })}
+          }} />
         </div>
       </div>
     </div>
@@ -2963,6 +3021,7 @@ export default function App() {
   const [fixed, setFixed] = useState(SEED_FIXED);
   const [budgets, setBudgets] = useState({});
   const [fx, setFx] = useState(SEED_FX_DAILY);
+  const [fxPairs, setFxPairs] = useState([{ id: "fxp_default", from: "CNY", to: "JPY", side: "from", value: "1" }]);
   const [favs, setFavs] = useState(DEFAULT_FAVS);
   const [setupDone, setSetupDone] = useState(false);
   const [batches, setBatches] = useState([]);          // 导入批次,用于识别重复文件
@@ -2982,6 +3041,7 @@ export default function App() {
         if (d.fixed) setFixed(d.fixed);
         setBudgets(d.budgets || {});
         if (d.fx) setFx(d.fx);
+        if (d.fxPairs?.length) setFxPairs(d.fxPairs.map((p, i) => ({ id: p.id || `fxp_${i}`, side: p.side || "from", value: p.value ?? "1", from: p.from || "CNY", to: p.to || d.cur || cur })));
         if (d.favs?.length) setFavs(d.favs);
         if (d.cur) setCur(d.cur);
         setBatches(d.batches || []);
@@ -2998,8 +3058,8 @@ export default function App() {
   /* 任何一处状态变化就存盘(内部有 400ms 合并) */
   useEffect(() => {
     if (!ready) return;
-    saveAll({ lang, txns, cats, quicks, fixed, budgets, fx, favs, cur, setupDone, batches });
-  }, [ready, lang, txns, cats, quicks, fixed, budgets, fx, favs, cur, setupDone, batches]);
+    saveAll({ lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, setupDone, batches });
+  }, [ready, lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, setupDone, batches]);
 
   const t = useMemo(() => (k) => DICT[lang]?.[k] ?? DICT.zh[k] ?? k, [lang]);
   const ctx = useMemo(() => ({ lang, t }), [lang, t]);
@@ -3068,7 +3128,7 @@ export default function App() {
                          batches={batches} addBatch={(b) => setBatches((bs) => [...bs, b])} /> :
     tab === "record" ? <Record cats={cats} quicks={quicks} txns={txns} onSave={add} cur={cur} setCur={setCur}
                          goQuick={() => setSub("quick")} goCats={() => setSub("cats")}
-                         fx={fx} setFx={setFx} main={cur} goFx={() => setSub("fx")} favs={favs} /> :
+                         fx={fx} setFx={setFx} main={cur} goFx={() => setSub("fx")} favs={favs} fxPairs={fxPairs} setFxPairs={setFxPairs} /> :
     tab === "ledger" ? <Ledger txns={txns} cats={cats} y={y} m={m} setYm={setYm} cur={cur} fx={fx} main={cur} onEdit={editTxn} onDelete={delTxn} /> :
     tab === "report" ? <Report txns={txns} cats={cats} cur={cur} fx={fx} y={y} m={m} setYm={setYm} main={cur} favs={favs} /> :
     tab === "stat"   ? <Analysis txns={txns} cats={cats} budgets={budgets} setBudgets={setBudgets} y={y} m={m} setYm={setYm}
