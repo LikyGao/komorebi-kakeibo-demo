@@ -1437,6 +1437,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               width: "100%", fontSize: 16, fontWeight: 600, color: C.ink,
               borderBottom: `1.5px solid ${(pr.side || "from") === side ? C.ink : C.line}`,
               paddingBottom: 1,
+              textAlign: "left",
             });
             const boxStyle = {
               minWidth: 0,
@@ -1452,7 +1453,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                 <div style={boxStyle}>
                   <input value={fromVal} inputMode="decimal" placeholder="1"
                     onChange={(e) => setPair(i, { side: "from", value: cleanDecimal(e.target.value) })}
-                    className="num bg-transparent outline-none text-right"
+                    className="num bg-transparent outline-none"
                     style={inputStyle("from")} />
                   <button onClick={() => setSheet({ k: "pair", i, side: "from" })}
                     className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
@@ -1467,7 +1468,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
                 <div style={boxStyle}>
                   <input value={toVal} inputMode="decimal" placeholder={v == null ? "—" : "0"}
                     onChange={(e) => setPair(i, { side: "to", value: cleanDecimal(e.target.value) })}
-                    className="num bg-transparent outline-none text-right"
+                    className="num bg-transparent outline-none"
                     style={{ ...inputStyle("to"), color: same ? C.ink3 : C.ink }} />
                   <button onClick={() => setSheet({ k: "pair", i, side: "to" })}
                     className="shrink-0 flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5" style={{ background: C.soft }}>
