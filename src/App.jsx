@@ -27,6 +27,10 @@ import {
 /* toISOString() 返回 UTC 日期,在东九区会整体差一天,所以一律用本地年月日拼 */
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const addDays = (iso, n) => { const x = new Date(iso + "T00:00:00"); x.setDate(x.getDate() + n); return ymd(x); };
+const shiftMonth = (y, m, n) => { const d = new Date(y, m - 1 + n, 1); return [d.getFullYear(), d.getMonth() + 1]; };
+const monthKey = (y, m) => `${y}-${String(m).padStart(2, "0")}`;
+const monthLabel = (y, m, lang) =>
+  new Intl.DateTimeFormat({ zh: "zh-CN", ja: "ja-JP", ko: "ko-KR", en: "en-US" }[lang] || "en-US", { month: "short" }).format(new Date(y, m - 1, 1));
 const TODAY = ymd(new Date());
 const THIS_MONTH = TODAY.slice(0, 7);
 const DIM = +TODAY.slice(8);                       // 当月已过天数
@@ -2035,11 +2039,126 @@ function Donut({ slices, total, cur, approx, label }) {
   );
 }
 
+function CategoryReportDetail({ cat, txns, fx, y, m, mode, only, main, onBack }) {
+  const { t, lang } = useT(); const L = useLabel();
+  const yearly = mode === "year";
+  const unit = only || main;
+  const periodKey = monthKey(y, m);
+  const inScope = (x) => x.type === "expense" && x.cat === cat.id && (!only || x.cur === only) &&
+    (yearly ? x.date.startsWith(`${y}-`) : x.date.startsWith(periodKey));
+  const val = (x) => only ? x.amount : convertOn(x.amount, x.cur, main, x.fxd || x.date, fx);
+  const rows = txns.filter(inScope).sort((a, b) => `${b.date}-${b.id}`.localeCompare(`${a.date}-${a.id}`));
+  const total = rows.reduce((s, x) => s + (val(x) ?? 0), 0);
+  const missing = rows.filter((x) => val(x) == null).length;
+  const months = yearly
+    ? Array.from({ length: 12 }, (_, i) => [y, i + 1])
+    : Array.from({ length: 6 }, (_, i) => shiftMonth(y, m, i - 5));
+  const bars = months.map(([yy, mm]) => {
+    const k = monthKey(yy, mm);
+    const rs = txns.filter((x) => x.type === "expense" && x.cat === cat.id && x.date.startsWith(k) && (!only || x.cur === only));
+    const v = only ? rs.reduce((s, x) => s + x.amount, 0) : sumOn(rs, main, fx).total;
+    return { y: yy, m: mm, key: k, v };
+  });
+  const barMax = Math.max(1, ...bars.map((b) => b.v));
+  const days = [...new Set(rows.map((x) => x.date))];
+  const onlyNote = only ? t("rp.onlyNote").replace("{code}", only).replace("{name}", t(`cur.${only}`)) : null;
+
+  return (
+    <div className="flex flex-col h-full relative" style={{ background: C.page }}>
+      <Bar title={L(cat)} left={<Back on={onBack} />} />
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 py-4" style={{ background: C.surface, borderBottom: `1px solid ${C.hair}` }}>
+          <div className="flex items-center gap-3">
+            <Tile icon={cat.icon} color={cat.color} size={40} ico={21} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate" style={{ fontSize: 12.5, color: C.ink3 }}>
+                {yearly ? y : `${y}.${String(m).padStart(2, "0")}`} · {rows.length} {t("t.expense")}
+              </div>
+              <div className="num truncate" style={{ fontSize: 25, fontWeight: 700, color: C.ink, marginTop: 2 }}>
+                {money(total, unit)}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            {!only && <MainHint code={main} />}
+            {onlyNote && <span className="truncate" style={{ fontSize: 11, color: C.ink3 }}>{onlyNote}</span>}
+            {missing > 0 && <span className="ml-auto shrink-0" style={{ fontSize: 11, color: C.out }}>{missing} · {t("x.noRate")}</span>}
+          </div>
+        </div>
+
+        <div className="px-4 pt-4 pb-2"><span className="lab">{t("rp.byMonth")}</span></div>
+        <div className="px-4 pb-4" style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}`, paddingTop: 14 }}>
+          <div className="flex items-end gap-2" style={{ height: 142 }}>
+            {bars.map((b) => {
+              const on = b.y === y && b.m === m;
+              const h = Math.max(b.v > 0 ? 8 : 2, (b.v / barMax) * 106);
+              return (
+                <div key={b.key} className="flex-1 min-w-0 flex flex-col items-center justify-end gap-1.5">
+                  {b.v > 0 && <span className="num truncate w-full text-center" style={{ fontSize: 10.5, color: on ? cat.color : C.ink3 }}>{compact(b.v, unit)}</span>}
+                  <span className="w-full rounded-t" style={{ height: h, background: on ? cat.color : `${cat.color}80`, minHeight: 2 }} />
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-2 mt-2">
+            {bars.map((b) => (
+              <span key={b.key} className="num flex-1 text-center truncate" style={{ fontSize: 10.5, color: b.y === y && b.m === m ? C.ink : C.ink3 }}>
+                {monthLabel(b.y, b.m, lang)}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="text-center py-16" style={{ fontSize: 13, color: C.ink3 }}>{t("rp.empty")}</div>
+        ) : (
+          <>
+            <div className="px-4 pt-4 pb-2"><span className="lab">{t("nav.ledger")}</span></div>
+            <CollapsibleList items={days} initial={4} render={(d) => {
+              const rs = rows.filter((x) => x.date === d);
+              const dayTotal = rs.reduce((s, x) => s + (val(x) ?? 0), 0);
+              return (
+                <div key={d} className="mt-1.5" style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
+                  <div className="flex items-baseline gap-2 px-4 pt-2.5 pb-1.5" style={{ background: C.soft }}>
+                    <span className="num" style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>{d}</span>
+                    <span style={{ fontSize: 11.5, color: C.ink3 }}>{t(`w${new Date(d + "T00:00:00").getDay()}`)}</span>
+                    <span className="num ml-auto" style={{ fontSize: 13, fontWeight: 700, color: C.ink2 }}>{money(-dayTotal, unit)}</span>
+                  </div>
+                  {rs.map((x) => {
+                    const converted = val(x);
+                    return (
+                      <div key={x.id} className="flex items-center gap-2.5 px-4 py-3" style={{ borderTop: `1px solid ${C.soft}` }}>
+                        <Ico n={cat.icon} c={cat.color} s={19} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate" style={{ fontSize: 14.5, color: C.ink, fontWeight: 600 }}>{L(cat)}</span>
+                            {L(x) && <span className="truncate" style={{ fontSize: 12.5, color: C.ink3 }}>{L(x)}</span>}
+                          </div>
+                          {!only && x.cur !== unit && <div className="num truncate" style={{ fontSize: 11.5, color: C.ink3 }}>{money(x.amount, x.cur)}</div>}
+                        </div>
+                        <span className="num shrink-0" style={{ fontSize: 15.5, fontWeight: 700, color: C.ink }}>
+                          {converted == null ? "—" : money(converted, unit)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }} />
+          </>
+        )}
+        <div style={{ height: 16 }} />
+      </div>
+    </div>
+  );
+}
+
 function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
   const { t } = useT(); const L = useLabel();
   const [mode, setMode] = useState("month");
   const [curSheet, setCurSheet] = useState(false);
   const [only, setOnly] = useState(null);        // null = 全部折算;否则只看该币种
+  const [detailCat, setDetailCat] = useState(null);
   const yearly = mode === "year";
 
   const period = txns.filter((x) => x.type === "expense" &&
@@ -2084,6 +2203,8 @@ function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
     const nm = m + d;
     setYm(nm < 1 ? [y - 1, 12] : nm > 12 ? [y + 1, 1] : [y, nm]);
   };
+  const detail = detailCat ? cats.find((c) => c.id === detailCat) : null;
+  if (detail) return <CategoryReportDetail cat={detail} txns={txns} fx={fx} y={y} m={m} mode={mode} only={only} main={main} onBack={() => setDetailCat(null)} />;
 
   return (
     <div className="flex flex-col h-full relative" style={{ background: C.page }}>
@@ -2137,13 +2258,15 @@ function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
 
             <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
               <CollapsibleList items={slices} initial={5} render={(r) => (
-                <div key={r.c.id} className="flex items-center gap-2.5 px-4 py-3" style={{ borderTop: `1px solid ${C.soft}` }}>
+                <button key={r.c.id} onClick={() => setDetailCat(r.c.id)}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-left" style={{ borderTop: `1px solid ${C.soft}` }}>
                   <span style={{ width: 8, height: 8, borderRadius: 8, background: r.c.color }} />
                   <Ico n={r.c.icon} c={r.c.color} s={16} />
                   <span className="truncate" style={{ fontSize: 14, color: C.ink }}>{L(r.c)}</span>
                   <span className="num ml-auto shrink-0" style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{money(r.v, unit)}</span>
                   <span className="num shrink-0" style={{ fontSize: 12, color: C.ink3, width: 40, textAlign: "right" }}>{r.p.toFixed(1)}%</span>
-                </div>
+                  <ChevronRight size={14} color={C.hair} className="shrink-0 -mr-1" />
+                </button>
               )} />
             </div>
           </>
