@@ -39,9 +39,9 @@ const DIM = +TODAY.slice(8);                       // 当月已过天数
    令牌
    ═════════════════════════════════════════════════════════ */
 const C = {
-  page: "#F6F7FB", surface: "#FFFFFF",
-  ink: "#1F2937", ink2: "#687382", ink3: "#A9B1BE",
-  hair: "#EBEEF4", soft: "#F3F5FA", line: "#D9E0EA",
+  page: "#F1F8F5", surface: "#FFFFFF",
+  ink: "#1D2A32", ink2: "#647482", ink3: "#9EACB8",
+  hair: "#E3ECE8", soft: "#ECF4F1", line: "#D2DDD9",
   out: "#F05F55", inn: "#22A676",
   outSoft: "#FFF0ED", innSoft: "#EAF8F1",
   warn: "#FFF4D8", warnInk: "#A77718",
@@ -54,7 +54,7 @@ const F_NUM = "'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace";
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 *{-webkit-tap-highlight-color:transparent}
-body{background:linear-gradient(180deg,#EEF5F6 0%,#E8EAF1 48%,#E6E8EF 100%)}
+body{background:linear-gradient(180deg,#DDEFE8 0%,#E9EDF5 52%,#E2E7EF 100%)}
 button{transition:transform .14s ease,box-shadow .14s ease,background-color .14s ease}
 button:active{transform:scale(.985)}
 .num{font-family:${F_NUM};font-variant-numeric:tabular-nums;letter-spacing:0}
@@ -62,7 +62,7 @@ button:active{transform:scale(.985)}
 .card{background:${C.surface};border-radius:${C.R}px;box-shadow:0 10px 28px rgba(33,44,61,.08),0 1px 0 rgba(255,255,255,.85) inset}
 .tile{display:flex;align-items:center;justify-content:center;border-radius:13px;flex-shrink:0;box-shadow:0 7px 18px rgba(31,41,51,.10)}
 .app-frame{box-shadow:0 22px 70px rgba(31,41,51,.18)}
-.bottom-nav{box-shadow:0 -10px 26px rgba(31,41,51,.06)}
+.bottom-nav{box-shadow:0 -12px 30px rgba(31,41,51,.08)}
 @keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .nudge{animation:nudge .32s ease}.up{animation:up .22s cubic-bezier(.2,.8,.2,1)}
@@ -1088,7 +1088,7 @@ const CatTag = ({ color, children }) => (
     style={{ background: `${color}1F`, color, fontSize: 10.5, fontWeight: 600 }}>{children}</span>
 );
 const Bar = ({ title, left, right }) => (
-  <div className="flex items-center gap-2 px-4 shrink-0" style={{ height: 52, borderBottom: `1px solid ${C.hair}`, background: "rgba(255,255,255,.94)", boxShadow: "0 6px 18px rgba(31,41,51,.03)" }}>
+  <div className="flex items-center gap-2 px-4 shrink-0" style={{ height: 52, borderBottom: `1px solid ${C.hair}`, background: "linear-gradient(135deg,#FFFFFF 0%,#EFFBF5 100%)", boxShadow: "0 8px 22px rgba(31,41,51,.05)" }}>
     {left}<span style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>{title}</span>
     <div className="ml-auto flex items-center gap-1">{right}</div>
   </div>
@@ -3225,7 +3225,7 @@ export default function App() {
     return (
       <>
         <style>{CSS}</style>
-        <div className="w-full flex justify-center" style={{ background: "linear-gradient(180deg,#EEF5F6 0%,#E8EAF1 52%,#E6E8EF 100%)", minHeight: "100vh", fontFamily: F_UI }}>
+        <div className="w-full flex justify-center" style={{ background: "linear-gradient(180deg,#DDEFE8 0%,#E9EDF5 52%,#E2E7EF 100%)", minHeight: "100vh", fontFamily: F_UI }}>
           <div className="app-frame flex items-center justify-center w-full" style={{ maxWidth: 400, height: "100vh", background: C.page }}>
             <span style={{ fontSize: 13, color: C.ink3 }}>…</span>
           </div>
@@ -3238,7 +3238,7 @@ export default function App() {
     return (
       <LangCtx.Provider value={ctx}>
         <style>{CSS}</style>
-        <div className="w-full flex justify-center" style={{ background: "linear-gradient(180deg,#EEF5F6 0%,#E8EAF1 52%,#E6E8EF 100%)", minHeight: "100vh", fontFamily: F_UI }}>
+        <div className="w-full flex justify-center" style={{ background: "linear-gradient(180deg,#DDEFE8 0%,#E9EDF5 52%,#E2E7EF 100%)", minHeight: "100vh", fontFamily: F_UI }}>
           <div className="app-frame relative flex flex-col w-full" style={{ maxWidth: 400, height: "100vh", background: C.page }}>
             <CurrencySetup lang={lang} onDone={({ main, favs: f }) => { setCur(main); setFavs(f); setSetupDone(true); }} />
           </div>
@@ -3269,14 +3269,15 @@ export default function App() {
   return (
     <LangCtx.Provider value={ctx}>
       <style>{CSS}</style>
-      <div className="w-full flex justify-center" style={{ background: "linear-gradient(180deg,#EEF5F6 0%,#E8EAF1 52%,#E6E8EF 100%)", minHeight: "100vh", fontFamily: F_UI }}>
+      <div className="w-full flex justify-center" style={{ background: "linear-gradient(180deg,#DDEFE8 0%,#E9EDF5 52%,#E2E7EF 100%)", minHeight: "100vh", fontFamily: F_UI }}>
         <div className="app-frame relative flex flex-col w-full" style={{ maxWidth: 400, height: "100vh", background: C.page }}>
           <div className="flex-1 overflow-hidden relative">{view}</div>
           <div className="bottom-nav flex shrink-0" style={{ background: "rgba(255,255,255,.96)", borderTop: `1px solid ${C.hair}` }}>
             {TABS.map(({ k, i18n, I }) => {
               const on = !sub && tab === k;
               return (
-                <button key={k} onClick={() => { setSub(null); setTab(k); }} className="flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 relative">
+                <button key={k} onClick={() => { setSub(null); setTab(k); }} className="flex-1 min-w-0 flex flex-col items-center gap-0.5 py-2 relative"
+                  style={{ margin: "6px 4px", borderRadius: 16, background: on ? C.innSoft : "transparent", boxShadow: on ? "0 8px 18px rgba(34,166,118,.14)" : "none" }}>
                   <I size={21} color={on ? C.brand : "#B4BCC4"} strokeWidth={on ? 2.3 : 1.8} />
                   <span className="truncate max-w-full px-0.5" style={{ fontSize: 12, fontWeight: on ? 600 : 400, color: on ? C.brand : "#B4BCC4" }}>{t(i18n)}</span>
                   {k === "set" && pendingCount > 0 && (
