@@ -46,6 +46,9 @@ const C = {
   outSoft: "#FFF0ED", innSoft: "#EAF8F1",
   warn: "#FFF4D8", warnInk: "#A77718",
   brand: "#22A676",
+  shadow: "0 16px 36px rgba(29,42,50,.12),0 2px 8px rgba(29,42,50,.06),0 1px 0 rgba(255,255,255,.92) inset",
+  shadowSoft: "0 10px 26px rgba(29,42,50,.09),0 1px 0 rgba(255,255,255,.9) inset",
+  shadowLift: "0 8px 18px rgba(34,166,118,.22),0 1px 0 rgba(255,255,255,.28) inset",
   R: 16,            // 卡片圆角
   r: 12,            // 小件圆角
 };
@@ -59,10 +62,12 @@ button{transition:transform .14s ease,box-shadow .14s ease,background-color .14s
 button:active{transform:scale(.985)}
 .num{font-family:${F_NUM};font-variant-numeric:tabular-nums;letter-spacing:0}
 .lab{font-size:12px;font-weight:700;letter-spacing:.04em;color:${C.ink3}}
-.card{background:${C.surface};border-radius:${C.R}px;box-shadow:0 10px 28px rgba(33,44,61,.08),0 1px 0 rgba(255,255,255,.85) inset}
-.tile{display:flex;align-items:center;justify-content:center;border-radius:13px;flex-shrink:0;box-shadow:0 7px 18px rgba(31,41,51,.10)}
-.app-frame{box-shadow:0 22px 70px rgba(31,41,51,.18)}
-.bottom-nav{box-shadow:0 -12px 30px rgba(31,41,51,.08)}
+.card{background:${C.surface};border-radius:${C.R}px;box-shadow:${C.shadow}}
+.tile{display:flex;align-items:center;justify-content:center;border-radius:13px;flex-shrink:0;box-shadow:0 8px 18px rgba(29,42,50,.16),0 1px 0 rgba(255,255,255,.22) inset}
+.app-frame{box-shadow:0 26px 90px rgba(29,42,50,.24)}
+.bottom-nav{box-shadow:0 -16px 34px rgba(29,42,50,.10)}
+.soft-panel{background:${C.surface};border-radius:${C.R}px;box-shadow:${C.shadowSoft};border:1px solid rgba(255,255,255,.72)}
+.floating-action{box-shadow:${C.shadowLift}}
 @keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .nudge{animation:nudge .32s ease}.up{animation:up .22s cubic-bezier(.2,.8,.2,1)}
@@ -1088,7 +1093,7 @@ const CatTag = ({ color, children }) => (
     style={{ background: `${color}1F`, color, fontSize: 10.5, fontWeight: 600 }}>{children}</span>
 );
 const Bar = ({ title, left, right }) => (
-  <div className="flex items-center gap-2 px-4 shrink-0" style={{ height: 52, borderBottom: `1px solid ${C.hair}`, background: "linear-gradient(135deg,#FFFFFF 0%,#EFFBF5 100%)", boxShadow: "0 8px 22px rgba(31,41,51,.05)" }}>
+  <div className="flex items-center gap-2 px-4 shrink-0" style={{ height: 52, borderBottom: `1px solid ${C.hair}`, background: "linear-gradient(135deg,#FFFFFF 0%,#EFFBF5 100%)", boxShadow: "0 10px 28px rgba(29,42,50,.10)" }}>
     {left}<span style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>{title}</span>
     <div className="ml-auto flex items-center gap-1">{right}</div>
   </div>
@@ -1097,12 +1102,12 @@ const Back = ({ on }) => { const { t } = useT(); return (
   <button onClick={on} className="-ml-1 p-1" aria-label={t("g.back")}><ArrowLeft size={19} color={C.ink} strokeWidth={2} /></button>
 ); };
 const Seg = ({ value, onChange, items, sm }) => (
-  <div className="flex rounded-full" style={{ background: C.soft, padding: 3 }}>
+  <div className="flex rounded-full" style={{ background: C.soft, padding: 3, boxShadow: "inset 0 1px 3px rgba(29,42,50,.08)" }}>
     {items.map((it) => (
       <button key={it.v} onClick={() => onChange(it.v)} className="rounded-full whitespace-nowrap"
         style={{ padding: sm ? "4px 12px" : "5px 16px", fontSize: sm ? 12.5 : 13.5, fontWeight: 600,
           background: value === it.v ? C.surface : "transparent", color: value === it.v ? C.ink : C.ink3,
-          boxShadow: value === it.v ? "0 1px 3px rgba(31,41,51,.12)" : "none" }}>{it.t}</button>
+          boxShadow: value === it.v ? "0 5px 14px rgba(29,42,50,.12)" : "none" }}>{it.t}</button>
     ))}
   </div>
 );
@@ -1132,7 +1137,7 @@ const Row = ({ label, children, last }) => {
 };
 const Sheet = ({ title, onClose, children }) => { const { t } = useT(); return (
   <div className="absolute inset-0 z-20 flex flex-col justify-end" style={{ background: "rgba(20,22,26,.32)" }} onClick={onClose}>
-    <div className="up" style={{ background: C.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: "76%" }} onClick={(e) => e.stopPropagation()}>
+    <div className="up" style={{ background: C.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: "76%", boxShadow: "0 -18px 48px rgba(29,42,50,.18)" }} onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center px-4 py-3" style={{ borderBottom: `1px solid ${C.soft}` }}>
         <span style={{ fontSize: 16.5, fontWeight: 600, color: C.ink }}>{title}</span>
         <button onClick={onClose} className="ml-auto p-1" aria-label={t("g.close")}><X size={18} color={C.ink2} /></button>
@@ -1386,13 +1391,13 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
         </div>
 
         <div className="flex items-center gap-2.5 px-3.5 py-3" style={{ background: C.surface }}>
-          <button onClick={() => setSheet("cat")} className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5"
-            style={{ borderRadius: C.r, background: C.soft }}>
+            <button onClick={() => setSheet("cat")} className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5"
+            style={{ borderRadius: C.r, background: C.soft, boxShadow: "0 6px 14px rgba(29,42,50,.08),0 1px 0 rgba(255,255,255,.85) inset" }}>
             <Tile icon={cObj?.icon} color={cObj?.color} size={26} ico={14} />
             <span className="truncate" style={{ fontSize: 15, fontWeight: 500, color: C.ink }}>{L(cObj)}</span>
             <ChevronDown size={15} color={C.ink3} className="shrink-0" />
           </button>
-          <button onClick={manual} className="shrink-0 rounded-lg px-5 py-2.5"
+          <button onClick={manual} className="floating-action shrink-0 rounded-lg px-5 py-2.5"
             style={{ background: C.brand, color: "#fff", fontSize: 15.5, fontWeight: 600, borderRadius: C.R }}>
             {t("r.save")}
           </button>
@@ -1406,7 +1411,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               return (
                 <button key={q.id} onClick={() => tapQuick(q)} className="shrink-0 flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1"
                   style={{ background: fxd ? `${c?.color}16` : C.surface,
-                    boxShadow: `inset 0 0 0 ${fxd ? 1.5 : 1}px ${fxd ? c?.color : C.hair}` }}>
+                    boxShadow: fxd ? `0 8px 18px rgba(29,42,50,.10), inset 0 0 0 1.5px ${c?.color}` : `0 7px 16px rgba(29,42,50,.08), inset 0 0 0 1px ${C.hair}` }}>
                   <Tile icon={c?.icon} color={c?.color} size={22} ico={12} />
                   <span style={{ fontSize: 14.5, fontWeight: 500, color: C.ink }}>{L(q)}</span>
                   {fxd && <span className="num" style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
@@ -1415,7 +1420,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               );
             })}
             <button onClick={goQuick} className="shrink-0 flex items-center justify-center rounded-full"
-              style={{ width: 36, height: 28, boxShadow: `inset 0 0 0 1px ${C.line}`, color: C.ink3, background: C.surface }}
+              style={{ width: 36, height: 28, boxShadow: "0 7px 16px rgba(29,42,50,.08), inset 0 0 0 1px rgba(210,221,217,.95)", color: C.ink3, background: C.surface }}
               aria-label={t("r.editQuick")}>
               <Plus size={16} />
             </button>
@@ -1426,12 +1431,12 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
           <span className="lab shrink-0">{t("x.panel")}</span>
           <span className="num truncate" style={{ fontSize: 12, color: C.ink3 }}>{snap?.at || "—"}</span>
           <button onClick={updateFx} disabled={fxBusy} className="ml-auto shrink-0 flex items-center gap-1 rounded-full px-2.5 py-1"
-            style={{ background: fxBusy ? C.soft : C.ink, color: fxBusy ? C.ink3 : "#fff", fontSize: 12.5, fontWeight: 600 }}>
+            style={{ background: fxBusy ? C.soft : C.ink, color: fxBusy ? C.ink3 : "#fff", fontSize: 12.5, fontWeight: 600, boxShadow: fxBusy ? "none" : "0 8px 18px rgba(29,42,50,.18)" }}>
             <RefreshCw size={11} strokeWidth={2.3} /> {fxBusy ? t("x.updating") : t("x.update")}
           </button>
         </div>
 
-        <div className="mx-3.5 overflow-hidden" style={{ borderRadius: C.R, background: C.surface, boxShadow: `inset 0 0 0 1px ${C.hair}` }}>
+        <div className="mx-3.5 overflow-hidden soft-panel">
           {pairs.map((pr, i) => {
             const r = snap?.rates;
             const a = rateOf(r, pr.from), b = rateOf(r, pr.to);
@@ -1601,12 +1606,12 @@ function FxScreen({ fx, setFx, cur, favs, onBack }) {
     <div className="flex flex-col h-full relative" style={{ background: C.page }}>
       <Bar title={t("x.title")} left={<Back on={onBack} />} />
       <div className="flex-1 overflow-y-auto">
-        <div className="m-3.5 p-3.5" style={{ background: C.surface, borderRadius: C.R, boxShadow: `inset 0 0 0 1px ${C.hair}` }}>
+        <div className="m-3.5 p-3.5 soft-panel">
           <div className="flex items-center gap-2">
             <span className="lab">{t("x.asOf")}</span>
             <span className="num" style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{snap?.at || "—"}</span>
             <button onClick={update} disabled={busy} className="ml-auto flex items-center gap-1 rounded-full px-2.5 py-1"
-              style={{ background: busy ? C.soft : C.ink, color: busy ? C.ink3 : "#fff", fontSize: 11, fontWeight: 600 }}>
+              style={{ background: busy ? C.soft : C.ink, color: busy ? C.ink3 : "#fff", fontSize: 11, fontWeight: 600, boxShadow: busy ? "none" : "0 8px 18px rgba(29,42,50,.18)" }}>
               <RefreshCw size={11} strokeWidth={2.3} /> {busy ? t("x.updating") : t("x.update")}
             </button>
           </div>
@@ -2993,7 +2998,7 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
       <Bar title={t("nav.set")} />
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 pt-4 pb-2"><span className="lab">{t("s.groupRecord")}</span></div>
-        <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}` }}>
+        <div className="mx-3.5 overflow-hidden soft-panel">
           <Item ti={t("q.title")} s={t("s.quick")} on={() => go("quick")} />
           <Item ti={t("f.title")} s={`${money(monthly, cur)} · ${fixed.filter((f) => f.on).length} ${t("s.fixedSub")}`} on={() => go("fixed")}
             tail={pendingCount > 0 && (
@@ -3002,13 +3007,13 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
           <Item ti={t("c.title")} s={t("s.cats")} on={() => go("cats")} />
         </div>
         <div className="px-4 pt-5 pb-2"><span className="lab">{t("s.groupData")}</span></div>
-        <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}` }}>
+        <div className="mx-3.5 overflow-hidden soft-panel">
           <Item ti={t("x.title")} s={t("x.sub")} on={() => go("fx")} />
           <Item ti={t("s.import")} s={t("s.importSub")} on={() => go("import")} />
           <Item ti={t("s.export")} on={exportCsv} />
         </div>
         <div className="px-4 pt-5 pb-2"><span className="lab">{t("s.groupGeneral")}</span></div>
-        <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
+        <div className="mx-3.5 overflow-hidden soft-panel">
           <button onClick={() => setSheet("cur")} className="w-full flex items-center gap-2 px-4 py-3.5 text-left" style={{ borderBottom: `1px solid ${C.soft}` }}>
             <span className="flex-1 min-w-0 truncate" style={{ fontSize: 15.5, color: C.ink }}>{t("s.currency")}</span>
             <span className="num shrink-0" style={{ fontSize: 12.5, fontWeight: 600, color: C.ink3 }}>{cur}</span>
