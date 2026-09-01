@@ -110,7 +110,7 @@ const DICT = {
     "f.dayHint":"该月没有这一天时（比如 31 号遇到 2 月），自动落在当月最后一天。",
     "f.start":"开始月份","f.startHint":"从这个月起补记到今天为止，不会生成未来的账目。",
     "f.foot":"固定支出只会补记到今天为止。停用后已经记入的账目仍然保留，只是不再继续生成。",
-    "f.empty":"还没有固定支出","f.every":"每月","f.day2":"日","f.badge":"待记",
+    "f.empty":"还没有固定支出","f.every":"每月","f.day2":"日","f.badge":"待记","f.delete":"删除固定支出","f.confirm":"确定删除这个固定支出吗？已经记入的账目不会删除。",
     "c.title":"分类","c.new":"新建分类","c.namePh":"分类名称","c.icon":"图标","g.food":"饮食","g.shop":"购物","g.home":"居家","g.move":"出行","g.life":"生活","g.fun":"娱乐","g.work":"学习工作","g.money":"账务","g.other":"其他","c.color":"颜色",
     "s.groupRecord":"记账","s.groupData":"数据","s.groupGeneral":"通用",
     "s.quick":"常用消费一键记账","s.fixedSub":"项","s.cats":"增删、排序、图标与颜色",
@@ -169,7 +169,7 @@ const DICT = {
     "f.dayHint":"その月に無い日（2月の31日など）は月末に繰り上げます。",
     "f.start":"開始月","f.startHint":"この月から今日までを記録します。未来の記録は作りません。",
     "f.foot":"固定費は今日までしか記録しません。無効にしても記録済みの分は残ります。",
-    "f.empty":"固定費がありません","f.every":"毎月","f.day2":"日","f.badge":"未記録",
+    "f.empty":"固定費がありません","f.every":"毎月","f.day2":"日","f.badge":"未記録","f.delete":"固定費を削除","f.confirm":"この固定費を削除しますか？すでに記録された明細は残ります。",
     "c.title":"分類","c.new":"分類を作成","c.namePh":"分類名","c.icon":"アイコン","g.food":"食事","g.shop":"買い物","g.home":"住まい","g.move":"移動","g.life":"暮らし","g.fun":"娯楽","g.work":"学習・仕事","g.money":"お金","g.other":"その他","c.color":"色",
     "s.groupRecord":"入力","s.groupData":"データ","s.groupGeneral":"一般",
     "s.quick":"よく使う支出をワンタップで","s.fixedSub":"件","s.cats":"追加・並べ替え・アイコンと色",
@@ -228,7 +228,7 @@ const DICT = {
     "f.dayHint":"If a month is shorter — the 31st in February — it lands on the last day.",
     "f.start":"Starting month","f.startHint":"Fills in from this month up to today. Never creates future entries.",
     "f.foot":"Recurring costs only fill in up to today. Turning one off keeps what's already recorded.",
-    "f.empty":"No recurring costs yet","f.every":"Every","f.day2":"","f.badge":"pending",
+    "f.empty":"No recurring costs yet","f.every":"Every","f.day2":"","f.badge":"pending","f.delete":"Delete recurring cost","f.confirm":"Delete this recurring cost? Entries already recorded will stay.",
     "c.title":"Categories","c.new":"New category","c.namePh":"Category name","c.icon":"Icon","g.food":"Food","g.shop":"Shopping","g.home":"Home","g.move":"Getting around","g.life":"Life","g.fun":"Fun","g.work":"Work & study","g.money":"Money","g.other":"Other","c.color":"Color",
     "s.groupRecord":"Recording","s.groupData":"Data","s.groupGeneral":"General",
     "s.quick":"One tap for what you buy often","s.fixedSub":"items","s.cats":"Add, reorder, icons and colors",
@@ -287,7 +287,7 @@ const DICT = {
     "f.dayHint":"그 달에 없는 날(2월 31일 등)은 말일로 처리합니다.",
     "f.start":"시작 월","f.startHint":"이 달부터 오늘까지 채웁니다. 미래 기록은 만들지 않습니다.",
     "f.foot":"고정 지출은 오늘까지만 기록합니다. 꺼도 이미 기록된 내역은 남습니다.",
-    "f.empty":"고정 지출이 없습니다","f.every":"매월","f.day2":"일","f.badge":"대기",
+    "f.empty":"고정 지출이 없습니다","f.every":"매월","f.day2":"일","f.badge":"대기","f.delete":"고정 지출 삭제","f.confirm":"이 고정 지출을 삭제할까요? 이미 기록된 내역은 남습니다.",
     "c.title":"분류","c.new":"분류 만들기","c.namePh":"분류 이름","c.icon":"아이콘","g.food":"음식","g.shop":"쇼핑","g.home":"집","g.move":"이동","g.life":"생활","g.fun":"여가","g.work":"공부·일","g.money":"돈","g.other":"기타","c.color":"색상",
     "s.groupRecord":"기록","s.groupData":"데이터","s.groupGeneral":"일반",
     "s.quick":"자주 쓰는 지출을 한 번에","s.fixedSub":"개","s.cats":"추가·정렬·아이콘과 색상",
@@ -2374,8 +2374,9 @@ function FixedCosts({ fixed, setFixed, cats, txns, onCatchUp, onBack, cur, fx })
     const save = () => {
       const a = Math.abs(+draft.amountStr || 0);
       if (!draft.name.trim() || a <= 0) return;
-      const item = { id: draft.id, i18n: draft.i18n || null, name: draft.name.trim(), cat: draft.cat, amount: a,
-        cur: draft.cur || cur, day: draft.day, start: draft.start, on: draft.on };
+      const fixedCur = draft.cur || cur;
+      const item = { id: draft.id, i18n: draft.i18n || null, name: draft.name.trim(), cat: draft.cat, amount: toMinor(a, fixedCur),
+        cur: fixedCur, day: draft.day, start: draft.start, on: draft.on };
       setFixed((fs) => isNew ? [...fs, { ...item, id: Math.max(0, ...fs.map((f) => f.id)) + 1 }] : fs.map((f) => (f.id === item.id ? item : f)));
       setDraft(null);
     };
@@ -2429,8 +2430,8 @@ function FixedCosts({ fixed, setFixed, cats, txns, onCatchUp, onBack, cur, fx })
 
           <div className="p-4 flex gap-2">
             {!isNew && (
-              <button onClick={() => { setFixed((fs) => fs.filter((f) => f.id !== draft.id)); setDraft(null); }}
-                className="rounded-lg px-4 py-3" style={{ background: C.surface, border: `1px solid ${C.hair}`, color: C.out }}><Trash2 size={17} /></button>
+              <button onClick={() => { if (window.confirm(t("f.confirm"))) { setFixed((fs) => fs.filter((f) => f.id !== draft.id)); setDraft(null); } }}
+                className="rounded-lg px-4 py-3" style={{ background: C.surface, border: `1px solid ${C.hair}`, color: C.out }} aria-label={t("f.delete")}><Trash2 size={17} /></button>
             )}
             <button onClick={save} className="flex-1 rounded-lg py-3" style={{ background: C.brand, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: C.R }}>{t("g.save")}</button>
           </div>
@@ -2468,7 +2469,7 @@ function FixedCosts({ fixed, setFixed, cats, txns, onCatchUp, onBack, cur, fx })
             const c = cats.find((z) => z.id === f.cat);
             return (
               <div key={f.id} className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${C.soft}`, opacity: f.on ? 1 : 0.45 }}>
-                <button onClick={() => setDraft({ ...f, name: L(f), cur: f.cur || cur, amountStr: String(f.amount) })} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                <button onClick={() => setDraft({ ...f, name: L(f), cur: f.cur || cur, amountStr: String(fromMinor(f.amount, f.cur || cur)) })} className="flex items-center gap-3 flex-1 min-w-0 text-left">
                   <Tile icon={c?.icon} color={c?.color} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate" style={{ fontSize: 14.5, color: C.ink }}>{L(f)}</div>
@@ -2479,6 +2480,10 @@ function FixedCosts({ fixed, setFixed, cats, txns, onCatchUp, onBack, cur, fx })
                 <button onClick={() => setFixed((fs) => fs.map((z) => (z.id === f.id ? { ...z, on: !z.on } : z)))} className="rounded-full shrink-0"
                   aria-label={L(f)} style={{ width: 36, height: 21, background: f.on ? C.ink : C.line, padding: 2, display: "flex", justifyContent: f.on ? "flex-end" : "flex-start" }}>
                   <span style={{ width: 17, height: 17, borderRadius: 17, background: "#fff", display: "block" }} />
+                </button>
+                <button onClick={() => window.confirm(t("f.confirm")) && setFixed((fs) => fs.filter((z) => z.id !== f.id))}
+                  className="shrink-0 p-1" aria-label={t("f.delete")}>
+                  <Trash2 size={15} color={C.out} />
                 </button>
               </div>
             );
