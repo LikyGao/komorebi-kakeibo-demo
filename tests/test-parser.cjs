@@ -116,5 +116,27 @@ ok('内置分类不会重复创建', backupPlan.catsToCreate.length===0, String(
 ok('固定支出和汇率也读出', backupPlan.fixedToCreate.length===1 && Object.keys(backupPlan.fxToMerge).length===1,
   `fixed=${backupPlan.fixedToCreate.length},fx=${Object.keys(backupPlan.fxToMerge).length}`);
 
+const fixedOnlyBackup=`#TRANSACTIONS
+id,date,type,amount,currency,categoryId,category,note,rateDate
+
+#CATEGORIES
+id,name,type,icon,color,order
+1,餐饮,expense,Utensils,#D4644A,1
+
+#FIXED_COSTS
+id,name,type,amount,currency,categoryId,category,day,enabled,startDate
+f_usd,美元固定,expense,100.25,USD,1,餐饮,1,1,2026-09
+f_jpy,日元固定,expense,100,JPY,1,餐饮,1,1,2026-09
+
+#EXCHANGE_RATES
+date,currency,rateToJPY,source`;
+const fixedOnlyPlan=buildImportPlan(fixedOnlyBackup,{existingCats:SEED_CATS,existingKeys:new Set()});
+ok('空交易备份也识别为本应用格式', fixedOnlyPlan.kind==='backup', fixedOnlyPlan.kind);
+ok('空交易备份固定项可导入', fixedOnlyPlan.fixedToCreate.length===2, String(fixedOnlyPlan.fixedToCreate.length));
+ok('USD 固定项按小数位保存', fixedOnlyPlan.fixedToCreate.find(f=>f.cur==='USD')?.amount===10025,
+  String(fixedOnlyPlan.fixedToCreate.find(f=>f.cur==='USD')?.amount));
+ok('JPY 固定项不被放大', fixedOnlyPlan.fixedToCreate.find(f=>f.cur==='JPY')?.amount===100,
+  String(fixedOnlyPlan.fixedToCreate.find(f=>f.cur==='JPY')?.amount));
+
 console.log(`\n通过 ${pass} / 失败 ${fail}`);
 process.exit(fail?1:0);

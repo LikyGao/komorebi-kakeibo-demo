@@ -902,7 +902,9 @@ function buildBackupImportPlan(sections, warnings, text, { existingCats = [], ex
 /* 把解析结果变成一份导入计划。cutoff 之后的记录一律排除 */
 function buildImportPlan(text, { cutoff = TODAY, existingCats = [], existingKeys = new Set() } = {}) {
   const { sections, warnings } = parseSections(text);
-  if ((sections.TRANSACTIONS || []).length) return buildBackupImportPlan(sections, warnings, text, { existingCats, existingKeys });
+  if ((sections.TRANSACTIONS || []).length || (sections.FIXED_COSTS || []).length || (sections.EXCHANGE_RATES || []).length) {
+    return buildBackupImportPlan(sections, warnings, text, { existingCats, existingKeys });
+  }
   const daily = sections.DAILY_DATAS || [];
   const rawCats = sections.CATEGORIES || [];
   const fixedRules = sections.FIXED_COST_SETTINGS || [];
