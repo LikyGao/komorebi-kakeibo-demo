@@ -8,5 +8,6 @@ android/.gradle/
 android/app/build/
 android/build/
 android/keystore/
+android/release/
 *.jks
 *.keystore
