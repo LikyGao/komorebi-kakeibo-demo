@@ -3,3 +3,10 @@ dist/
 work/
 .DS_Store
 *.log
+.gradle-local/
+android/.gradle/
+android/app/build/
+android/build/
+android/keystore/
+*.jks
+*.keystore
