@@ -613,6 +613,17 @@ const SEED_CATS = [
   { id: 25, k: "invest", i18n: "cat.invest", icon: "Coins",      color: "#4F9E9E", type: "income", order: 5 },
   { id: 26, k: "etc",    i18n: "cat.etc",    icon: "TrendingUp", color: "#8A8F98", type: "income", order: 6 },
 ];
+
+const isFallbackCat = (c) => c?.k === "misc" || c?.k === "etc" || c?.k === "imported_misc";
+const sortCats = (cats) => [...cats].sort((a, b) => {
+  const af = isFallbackCat(a), bf = isFallbackCat(b);
+  if (af !== bf) return af ? 1 : -1;
+  return (a.order || 0) - (b.order || 0);
+});
+const normalizeCatOrders = (cats) =>
+  ["expense", "income"].flatMap((type) =>
+    sortCats(cats.filter((c) => c.type === type)).map((c, i) => ({ ...c, order: i + 1 }))
+  );
 const byK = (k) => SEED_CATS.find((c) => c.k === k);
 
 const SEED_QUICK = [];
@@ -1411,7 +1422,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
               return (
                 <button key={q.id} onClick={() => tapQuick(q)} className="shrink-0 flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1"
                   style={{ background: fxd ? `${c?.color}16` : C.surface,
-                    boxShadow: fxd ? `0 8px 18px rgba(29,42,50,.10), inset 0 0 0 1.5px ${c?.color}` : `0 7px 16px rgba(29,42,50,.08), inset 0 0 0 1px ${C.hair}` }}>
+                    boxShadow: "0 7px 16px rgba(29,42,50,.08)" }}>
                   <Tile icon={c?.icon} color={c?.color} size={22} ico={12} />
                   <span style={{ fontSize: 14.5, fontWeight: 500, color: C.ink }}>{L(q)}</span>
                   {fxd && <span className="num" style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
@@ -1522,7 +1533,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
       {sheet === "cat" && (
         <Sheet title={t("r.pickCat")} onClose={() => setSheet(null)}>
           <div className="grid grid-cols-4 gap-2 p-3">
-            {cats.filter((c) => c.type === type).sort((a, b) => a.order - b.order).map((c) => (
+            {sortCats(cats.filter((c) => c.type === type)).map((c) => (
               <button key={c.id} onClick={() => { setCat(c.id); setSheet(null); }} className="flex flex-col items-center gap-1.5 py-2.5 px-1"
                 style={{ borderRadius: C.R, background: c.id === cat ? `${c.color}14` : C.surface,
                   boxShadow: c.id === cat ? `inset 0 0 0 2px ${c.color}` : `inset 0 0 0 1px ${C.hair}` }}>
@@ -1791,7 +1802,7 @@ function EntryEditor({ entry, cats, fx, onSave, onDelete, onClose }) {
   }));
   const [sheet, setSheet] = useState(null);
   const dec = CUR[d.cur]?.dec ?? 0;
-  const list = cats.filter((c) => c.type === d.type).sort((a, b) => a.order - b.order);
+  const list = sortCats(cats.filter((c) => c.type === d.type));
   const cObj = cats.find((c) => c.id === d.cat);
 
   const save = () => {
@@ -2011,7 +2022,7 @@ function Analysis({ txns, cats, budgets, setBudgets, y, m, setYm, cur, fx, goFx,
         </div>
         <div style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
           <BRow label={t("a.total")} budget={budgets.__t} spent={totalSpent} onEdit={() => edit("__t", budgets.__t)} />
-          <CollapsibleList items={cats.filter((c) => c.type === "expense").sort((a, b) => a.order - b.order)} initial={5} render={(c) => (
+          <CollapsibleList items={sortCats(cats.filter((c) => c.type === "expense"))} initial={5} render={(c) => (
             <BRow key={c.id} label={L(c)} color={c.color} icon={c.icon} budget={budgets[c.id]} spent={spentOf(c.id)} onEdit={() => edit(c.id, budgets[c.id])} />
           )} />
         </div>
@@ -2356,7 +2367,7 @@ function FixedCosts({ fixed, setFixed, cats, txns, onCatchUp, onBack, cur, fx })
   const [curSheet, setCurSheet] = useState(false);
   const pending = pendingFixed(fixed, txns);
   const monthly = sumOn(fixed.filter((f) => f.on).map((f) => ({ amount: f.amount, cur: f.cur || cur, date: TODAY })), cur, fx).total;
-  const expCats = cats.filter((c) => c.type === "expense").sort((a, b) => a.order - b.order);
+  const expCats = sortCats(cats.filter((c) => c.type === "expense"));
 
   if (draft) {
     const isNew = draft.id == null;
@@ -2499,7 +2510,7 @@ function QuickEditor({ quicks, setQuicks, cats, onBack, cur }) {
   });
   if (draft) {
     const isNew = draft.id == null;
-    const list = cats.filter((c) => c.type === draft.type).sort((a, b) => a.order - b.order);
+    const list = sortCats(cats.filter((c) => c.type === draft.type));
     const save = () => {
       if (!draft.name.trim()) return;
       const item = { id: draft.id, i18n: draft.i18n || null, name: draft.name.trim(), cat: draft.cat, type: draft.type,
@@ -2624,12 +2635,12 @@ function CatEditor({ cats, setCats, onBack }) {
   const { t } = useT(); const L = useLabel();
   const [side, setSide] = useState("expense");
   const [draft, setDraft] = useState(null);
-  const list = cats.filter((c) => c.type === side).sort((a, b) => a.order - b.order);
+  const list = sortCats(cats.filter((c) => c.type === side));
   const dnd = useDragSort(list.map((c) => c.id), (ids) =>
-    setCats((cs) => cs.map((c) => {
+    setCats((cs) => normalizeCatOrders(cs.map((c) => {
       const i = ids.indexOf(c.id);
       return i < 0 ? c : { ...c, order: i + 1 };
-    })));
+    }))));
   if (draft) return (
     <div className="flex flex-col h-full" style={{ background: C.page }}>
       <Bar title={t("c.new")} left={<Back on={() => setDraft(null)} />} />
@@ -2668,8 +2679,8 @@ function CatEditor({ cats, setCats, onBack }) {
       <div className="p-4 shrink-0" style={{ background: C.surface, borderTop: `1px solid ${C.hair}` }}>
         <button onClick={() => {
           if (!draft.name.trim()) return;
-          setCats((cs) => [...cs, { ...draft, id: Math.max(...cs.map((c) => c.id)) + 1, k: `c${Date.now()}`, i18n: null,
-            name: draft.name.trim(), order: cs.filter((c) => c.type === draft.type).length + 1 }]);
+          setCats((cs) => normalizeCatOrders([...cs, { ...draft, id: Math.max(...cs.map((c) => c.id)) + 1, k: `c${Date.now()}`, i18n: null,
+            name: draft.name.trim(), order: cs.filter((c) => c.type === draft.type && !isFallbackCat(c)).length + 1 }]));
           setDraft(null);
         }} className="w-full rounded-lg py-3" style={{ background: C.brand, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: C.R }}>{t("g.save")}</button>
       </div>
@@ -2746,7 +2757,7 @@ function Importer({ onBack, cur, favs, cats, setCats, setFixed, txns, onImport, 
           name: r.name, i18n: null, fx: null, fxd: r.fxd || (ratesOn(fx, r.date)?.at ?? null),
           srcKey: r.key, srcBatch: plan.hash,
         }));
-      if (plan.catsToCreate.length) setCats((cs) => [...cs, ...plan.catsToCreate]);
+      if (plan.catsToCreate.length) setCats((cs) => normalizeCatOrders([...cs, ...plan.catsToCreate]));
       if (plan.fixedToCreate?.length) setFixed((fs) => [...fs, ...plan.fixedToCreate]);
       if (Object.keys(plan.fxToMerge || {}).length) {
         setFx((f) => Object.entries(plan.fxToMerge).reduce((acc, [date, rates]) => mergeDay(acc, date, rates, rates.__src || "backup"), f));
