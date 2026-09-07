@@ -91,6 +91,7 @@ const DICT = {
     "nav.record":"记账","nav.ledger":"账本","nav.stat":"分析","nav.set":"设置",
     "x.currentCurrency":"当前货币",
     "setup.title":"选择货币和语言","setup.sub":"用于快捷选择，之后可以在设置里修改","setup.currencies":"选择货币",
+    "rp.stats":"统计","rp.convertTitle":"全部支出折算","rp.convertAs":"按 {code} {name} 统计","rp.convertHint":"所有币种支出按每笔账当天的汇率折算","rp.onlyTitle":"单一币种支出","rp.onlyAs":"只显示 {code} {name} 支出","rp.onlyHint":"只统计原本以该币种记录的支出",
     "t.expense":"支出","t.income":"收入","t.balance":"结余",
     "r.date":"日期","r.note":"记录","r.category":"分类","r.notePh":"添加备注",
     "r.rowExpense":"支出","r.rowIncome":"收入","r.rowCategory":"分类",
@@ -152,6 +153,7 @@ const DICT = {
     "nav.record":"入力","nav.ledger":"家計簿","nav.stat":"分析","nav.set":"設定",
     "x.currentCurrency":"現在の通貨",
     "setup.title":"通貨と言語を選択","setup.sub":"選択画面に優先表示します。後で設定から変更できます","setup.currencies":"通貨を選択",
+    "rp.stats":"集計","rp.convertTitle":"すべての支出を換算","rp.convertAs":"{code} {name} で集計","rp.convertHint":"すべての通貨を各記録日のレートで換算","rp.onlyTitle":"単一通貨の支出","rp.onlyAs":"{code} {name} の支出だけ表示","rp.onlyHint":"元の記録通貨がこの通貨の支出だけを集計",
     "t.expense":"支出","t.income":"収入","t.balance":"収支",
     "r.date":"日付","r.note":"メモ","r.category":"分類","r.notePh":"メモを追加",
     "r.rowExpense":"支出","r.rowIncome":"収入","r.rowCategory":"分類",
@@ -213,6 +215,7 @@ const DICT = {
     "nav.record":"Add","nav.ledger":"Ledger","nav.stat":"Insights","nav.set":"Settings",
     "x.currentCurrency":"Current currency",
     "setup.title":"Choose currencies and language","setup.sub":"Shown first for quick access; you can change these later in Settings","setup.currencies":"Choose currencies",
+    "rp.stats":"Statistics","rp.convertTitle":"Convert all expenses","rp.convertAs":"Calculate in {code} {name}","rp.convertHint":"Convert every expense at the rate saved for its entry date","rp.onlyTitle":"Single-currency expenses","rp.onlyAs":"Show only {code} {name} expenses","rp.onlyHint":"Include only expenses originally recorded in this currency",
     "t.expense":"Expense","t.income":"Income","t.balance":"Net",
     "r.date":"Date","r.note":"Note","r.category":"Category","r.notePh":"Add a note",
     "r.rowExpense":"Spent","r.rowIncome":"Got","r.rowCategory":"Category",
@@ -274,6 +277,7 @@ const DICT = {
     "nav.record":"기록","nav.ledger":"장부","nav.stat":"분석","nav.set":"설정",
     "x.currentCurrency":"현재 통화",
     "setup.title":"통화와 언어 선택","setup.sub":"선택 목록에 먼저 표시됩니다. 나중에 설정에서 변경할 수 있습니다","setup.currencies":"통화 선택",
+    "rp.stats":"통계","rp.convertTitle":"전체 지출 환산","rp.convertAs":"{code} {name}(으)로 통계","rp.convertHint":"모든 통화 지출을 각 기록일의 환율로 환산","rp.onlyTitle":"단일 통화 지출","rp.onlyAs":"{code} {name} 지출만 표시","rp.onlyHint":"원래 이 통화로 기록된 지출만 통계",
     "t.expense":"지출","t.income":"수입","t.balance":"잔액",
     "r.date":"날짜","r.note":"메모","r.category":"분류","r.notePh":"메모 추가",
     "r.rowExpense":"지출","r.rowIncome":"수입","r.rowCategory":"분류",
@@ -1186,7 +1190,7 @@ const Seg = ({ value, onChange, items, sm }) => (
   </div>
 );
 /* 标签宽度按语言自适应:中日韩两三个字,英文单词更长 */
-/* 各统计页顶部的「当前主货币」提示 */
+/* 各统计页顶部的「当前货币」提示 */
 const MainHint = ({ code, cls = "", label = "x.currentCurrency", onClick }) => {
   const { t } = useT();
   const content = (
@@ -2224,31 +2228,21 @@ function CategoryReportDetail({ cat, txns, fx, y, m, mode, only, main, onBack })
   );
 }
 
-function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
+function Report({ txns, cats, fx, y, m, setYm, main, setMain, only, setOnly, favs }) {
   const { t } = useT(); const L = useLabel();
   const [mode, setMode] = useState("month");
-  const [curSheet, setCurSheet] = useState(false);
-  const [only, setOnly] = useState(null);        // null = 全部折算;否则只看该币种
+  const [statSheet, setStatSheet] = useState(null); // menu / convert / only
   const [detailCat, setDetailCat] = useState(null);
   const yearly = mode === "year";
 
   const period = txns.filter((x) => x.type === "expense" &&
     (yearly ? x.date.startsWith(`${y}-`) : x.date.startsWith(`${y}-${String(m).padStart(2, "0")}`)));
   const used = [...new Set(period.map((x) => x.cur))];
-  const multi = used.length > 1;
   const scope = only ? period.filter((x) => x.cur === only) : period;
   const unit = only || main;
   const { total, missing } = only ? { total: scope.reduce((a, x) => a + x.amount, 0), missing: [] } : sumOn(scope, main, fx);
-  /* 出现过、且不是显示币种的那些币种,要在下面注明用了哪天的汇率 */
-  const others = [...new Set(scope.map((x) => x.cur))].filter((k) => k !== unit);
-  const dates = [...new Set(scope.map((x) => x.fxd || x.date))];
-  /* 各币种原币小计 + 折算值,用于「全部」模式下的明细 */
-  const allTotal = sumOn(period, main, fx).total;
-  const perCur = used.map((k) => {
-    const rows = period.filter((x) => x.cur === k);
-    const raw = rows.reduce((a, x) => a + x.amount, 0);
-    return { code: k, raw, conv: sumOn(rows, main, fx).total, n: rows.length };
-  }).sort((a, b) => b.conv - a.conv);
+  const onlyChoice = only || used[0] || favs[0] || main;
+  const currencyText = (key, code) => t(key).replace("{code}", code).replace("{name}", t(`cur.${code}`));
   const onlyNote = only ? t("rp.onlyNote").replace("{code}", only).replace("{name}", t(`cur.${only}`)) : null;
 
   const slices = useMemo(() => {
@@ -2290,21 +2284,12 @@ function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
 
       <div className="px-4 py-3 flex items-center gap-2" style={{ background: C.surface, borderBottom: `1px solid ${C.hair}` }}>
         <Seg value={mode} onChange={setMode} items={[{ v: "month", t: t("rp.month") }, { v: "year", t: t("rp.year") }]} />
-        {!only && <MainHint code={main} cls="ml-2" />}
-        {only ? (
-          <button onClick={() => setOnly(null)} className="ml-auto flex items-center gap-1 rounded-full px-2.5 py-1.5"
-            style={{ background: C.ink, color: "#fff" }}>
-            <span style={{ fontSize: 12 }}>{flag(only)}</span>
-            <span className="num" style={{ fontSize: 11, fontWeight: 700 }}>{only}</span>
-            <X size={12} />
-          </button>
-        ) : (
-          <button onClick={() => setCurSheet(true)} disabled={used.length === 0}
-            className="ml-auto flex items-center gap-1 rounded-full px-2.5 py-1.5" style={{ background: C.soft }}>
-            <span style={{ fontSize: 11.5, color: used.length ? C.ink2 : C.ink3, fontWeight: 600 }}>{t("rp.byCur")}</span>
-            <ChevronDown size={12} color={C.ink3} />
-          </button>
-        )}
+        <MainHint code={main} cls="ml-2" onClick={() => setStatSheet("convert")} />
+        <button onClick={() => setStatSheet("menu")}
+          className="ml-auto flex items-center gap-1 rounded-full px-2.5 py-1.5" style={{ background: C.soft }}>
+          <span style={{ fontSize: 11.5, color: C.ink2, fontWeight: 600 }}>{t("rp.stats")}</span>
+          <ChevronDown size={12} color={C.ink3} />
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto">
         {slices.length === 0 ? (
@@ -2378,31 +2363,39 @@ function Report({ txns, cats, cur, fx, y, m, setYm, main, favs }) {
         <div style={{ height: 16 }} />
       </div>
 
-      {curSheet && (
-        <Sheet title={t("rp.byCur")} onClose={() => setCurSheet(false)}>
-          <button onClick={() => { setOnly(null); setCurSheet(false); }}
+      {statSheet === "menu" && (
+        <Sheet title={t("rp.stats")} onClose={() => setStatSheet(null)}>
+          <div className="px-4 pt-3 pb-1"><span className="lab">{t("rp.convertTitle")}</span></div>
+          <button onClick={() => setStatSheet("convert")}
             className="w-full flex items-center gap-3 px-4 py-3.5 text-left" style={{ borderBottom: `1px solid ${C.soft}` }}>
-            <span className="rounded-full flex items-center justify-center shrink-0"
-              style={{ width: 26, height: 26, background: C.innSoft, color: C.brand, fontSize: 12, fontWeight: 700 }}>Σ</span>
-            <span className="flex-1" style={{ fontSize: 14, color: C.ink }}>{t("rp.all")}</span>
-            <span className="num shrink-0" style={{ fontSize: 13, color: C.ink }}>{money(allTotal, main)}</span>
+            <span style={{ fontSize: 22 }}>{flag(main)}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate" style={{ fontSize: 14.5, color: C.ink }}>{currencyText("rp.convertAs", main)}</div>
+              <div className="truncate" style={{ fontSize: 11.5, color: C.ink3, marginTop: 2 }}>{t("rp.convertHint")}</div>
+            </div>
             {!only && <Check size={16} color={C.brand} strokeWidth={2.6} />}
+            <ChevronRight size={15} color={C.hair} />
           </button>
-          {used.map((k) => {
-            const r = perCur.find((z) => z.code === k);
-            return (
-              <button key={k} onClick={() => { setOnly(k); setCurSheet(false); }}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left" style={{ borderBottom: `1px solid ${C.soft}` }}>
-                <span style={{ fontSize: 22 }}>{flag(k)}</span>
-                <span className="num shrink-0" style={{ fontSize: 12, fontWeight: 700, color: C.ink2, width: 34 }}>{k}</span>
-                <span className="flex-1 truncate" style={{ fontSize: 14, color: C.ink }}>{t(`cur.${k}`)}</span>
-                <span className="num shrink-0" style={{ fontSize: 13, color: C.ink }}>{money(r?.raw ?? 0, k)}</span>
-                {only === k && <Check size={16} color={C.brand} strokeWidth={2.6} />}
-              </button>
-            );
-          })}
-          {used.length === 0 && <div className="text-center py-10" style={{ fontSize: 13, color: C.ink3 }}>—</div>}
+          <div className="px-4 pt-4 pb-1"><span className="lab">{t("rp.onlyTitle")}</span></div>
+          <button onClick={() => setStatSheet("only")}
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
+            <span style={{ fontSize: 22 }}>{flag(onlyChoice)}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate" style={{ fontSize: 14.5, color: C.ink }}>{currencyText("rp.onlyAs", onlyChoice)}</div>
+              <div className="truncate" style={{ fontSize: 11.5, color: C.ink3, marginTop: 2 }}>{t("rp.onlyHint")}</div>
+            </div>
+            {only && <Check size={16} color={C.brand} strokeWidth={2.6} />}
+            <ChevronRight size={15} color={C.hair} />
+          </button>
         </Sheet>
+      )}
+      {statSheet === "convert" && (
+        <CurrencySheet title={t("rp.convertTitle")} favs={favs} value={main}
+          onPick={(code) => { setMain(code); setOnly(null); }} onClose={() => setStatSheet(null)} />
+      )}
+      {statSheet === "only" && (
+        <CurrencySheet title={t("rp.onlyTitle")} favs={favs} value={only}
+          onPick={setOnly} onClose={() => setStatSheet(null)} />
       )}
     </div>
   );
@@ -3187,6 +3180,8 @@ export default function App() {
   const [[y, m], setYm] = useState([+TODAY.slice(0, 4), +TODAY.slice(5, 7)]);
   const [cur, setCur] = useState("JPY");
   const [ledgerCur, setLedgerCur] = useState("JPY");
+  const [reportCur, setReportCur] = useState("JPY");
+  const [reportOnly, setReportOnly] = useState(null);
 
   /* 启动读盘。没有存档就保持空账本。 */
   useEffect(() => {
@@ -3207,6 +3202,9 @@ export default function App() {
         if (d.favs?.length) setFavs(d.favs);
         if (d.cur) setCur(d.cur);
         setLedgerCur(d.ledgerCur || d.cur || "JPY");
+        const firstFav = d.favs?.find((code) => CUR[code]);
+        setReportCur(CUR[d.reportCur] ? d.reportCur : (firstFav || LANG_CUR[d.lang || "zh"] || "USD"));
+        setReportOnly(CUR[d.reportOnly] ? d.reportOnly : null);
         setBatches(d.batches || []);
         setSetupDone(!!d.setupDone);
       } else {
@@ -3221,8 +3219,8 @@ export default function App() {
   /* 任何一处状态变化就存盘(内部有 400ms 合并) */
   useEffect(() => {
     if (!ready) return;
-    saveAll({ lang, txns, cats, quicks, fixed, budgets, fx, fxAnchor: ANCHOR, fxPairs, favs, cur, ledgerCur, setupDone, batches });
-  }, [ready, lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, ledgerCur, setupDone, batches]);
+    saveAll({ lang, txns, cats, quicks, fixed, budgets, fx, fxAnchor: ANCHOR, fxPairs, favs, cur, ledgerCur, reportCur, reportOnly, setupDone, batches });
+  }, [ready, lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, ledgerCur, reportCur, reportOnly, setupDone, batches]);
 
   const t = useMemo(() => (k) => DICT[lang]?.[k] ?? DICT.zh[k] ?? k, [lang]);
   const ctx = useMemo(() => ({ lang, t }), [lang, t]);
@@ -3292,7 +3290,7 @@ export default function App() {
           <div className="app-frame relative flex flex-col w-full" style={{ maxWidth: 400, height: "100vh", background: C.page }}>
             <CurrencySetup lang={lang} setLang={setLang} onDone={({ favs: f }) => {
               const first = f[0] || LANG_CUR[lang] || "USD";
-              setCur(first); setLedgerCur(first); setFavs(f); setSetupDone(true);
+              setCur(first); setLedgerCur(first); setReportCur(first); setReportOnly(null); setFavs(f); setSetupDone(true);
             }} />
           </div>
         </div>
@@ -3312,7 +3310,8 @@ export default function App() {
                          goQuick={() => setSub("quick")} goCats={() => setSub("cats")}
                          fx={fx} setFx={setFx} main={cur} goFx={() => setSub("fx")} favs={favs} fxPairs={fxPairs} setFxPairs={setFxPairs} /> :
     tab === "ledger" ? <Ledger txns={txns} cats={cats} y={y} m={m} setYm={setYm} cur={ledgerCur} setCur={setLedgerCur} favs={favs} fx={fx} main={ledgerCur} onEdit={editTxn} onDelete={delTxn} /> :
-    tab === "report" ? <Report txns={txns} cats={cats} cur={cur} fx={fx} y={y} m={m} setYm={setYm} main={cur} favs={favs} /> :
+    tab === "report" ? <Report txns={txns} cats={cats} fx={fx} y={y} m={m} setYm={setYm}
+                         main={reportCur} setMain={setReportCur} only={reportOnly} setOnly={setReportOnly} favs={favs} /> :
     tab === "stat"   ? <Analysis txns={txns} cats={cats} budgets={budgets} setBudgets={setBudgets} y={y} m={m} setYm={setYm}
                          cur={cur} fx={fx} goFx={() => setSub("fx")} main={cur} /> :
                        <SettingsScreen go={setSub} cur={cur} lang={lang} setLang={setLang}

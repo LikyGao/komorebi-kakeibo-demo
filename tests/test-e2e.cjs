@@ -57,7 +57,7 @@ ok('无 2070 年数据', rows.every(r=>!r.date.startsWith('20 70'.replace(' ',''
 
 console.log('\n【持久化往返】');
 (async()=>{
-  const data={lang:'ja',txns:rows.slice(0,5),cur:'CNY',favs:['CNY','JPY'],fxAnchor:'USD',setupDone:true,batches:[{hash:plan.hash}],
+  const data={lang:'ja',txns:rows.slice(0,5),cur:'CNY',reportCur:'JPY',reportOnly:'CNY',favs:['CNY','JPY'],fxAnchor:'USD',setupDone:true,batches:[{hash:plan.hash}],
     fxPairs:[{id:'fxp_test',from:'USD',to:'JPY',side:'to',value:'160'}]};
   M.saveAll(data);
   await new Promise(r=>setTimeout(r,600));
@@ -66,6 +66,8 @@ console.log('\n【持久化往返】');
   ok('语言保留', back.lang==='ja');
   ok('交易保留', back.txns.length===5);
   ok('当前记账币种保留', back.cur==='CNY');
+  ok('报告统计币种独立保留', back.reportCur==='JPY' && back.reportCur!==back.cur);
+  ok('报告筛选模式保留', back.reportOnly==='CNY');
   ok('汇率基准标记保留', back.fxAnchor==='USD');
   ok('批次保留(可识别重复文件)', back.batches[0].hash===plan.hash);
   ok('汇率计算行保留', back.fxPairs?.[0]?.from==='USD' && back.fxPairs[0].to==='JPY' && back.fxPairs[0].value==='160');
