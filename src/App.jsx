@@ -90,6 +90,7 @@ const DICT = {
   zh: {
     "nav.record":"记账","nav.ledger":"账本","nav.stat":"分析","nav.set":"设置",
     "x.currentCurrency":"当前货币",
+    "setup.title":"选择货币和语言","setup.sub":"用于快捷选择，之后可以在设置里修改","setup.currencies":"选择货币",
     "t.expense":"支出","t.income":"收入","t.balance":"结余",
     "r.date":"日期","r.note":"记录","r.category":"分类","r.notePh":"添加备注",
     "r.rowExpense":"支出","r.rowIncome":"收入","r.rowCategory":"分类",
@@ -150,6 +151,7 @@ const DICT = {
   ja: {
     "nav.record":"入力","nav.ledger":"家計簿","nav.stat":"分析","nav.set":"設定",
     "x.currentCurrency":"現在の通貨",
+    "setup.title":"通貨と言語を選択","setup.sub":"選択画面に優先表示します。後で設定から変更できます","setup.currencies":"通貨を選択",
     "t.expense":"支出","t.income":"収入","t.balance":"収支",
     "r.date":"日付","r.note":"メモ","r.category":"分類","r.notePh":"メモを追加",
     "r.rowExpense":"支出","r.rowIncome":"収入","r.rowCategory":"分類",
@@ -210,6 +212,7 @@ const DICT = {
   en: {
     "nav.record":"Add","nav.ledger":"Ledger","nav.stat":"Insights","nav.set":"Settings",
     "x.currentCurrency":"Current currency",
+    "setup.title":"Choose currencies and language","setup.sub":"Shown first for quick access; you can change these later in Settings","setup.currencies":"Choose currencies",
     "t.expense":"Expense","t.income":"Income","t.balance":"Net",
     "r.date":"Date","r.note":"Note","r.category":"Category","r.notePh":"Add a note",
     "r.rowExpense":"Spent","r.rowIncome":"Got","r.rowCategory":"Category",
@@ -270,6 +273,7 @@ const DICT = {
   ko: {
     "nav.record":"기록","nav.ledger":"장부","nav.stat":"분석","nav.set":"설정",
     "x.currentCurrency":"현재 통화",
+    "setup.title":"통화와 언어 선택","setup.sub":"선택 목록에 먼저 표시됩니다. 나중에 설정에서 변경할 수 있습니다","setup.currencies":"통화 선택",
     "t.expense":"지출","t.income":"수입","t.balance":"잔액",
     "r.date":"날짜","r.note":"메모","r.category":"분류","r.notePh":"메모 추가",
     "r.rowExpense":"지출","r.rowIncome":"수입","r.rowCategory":"분류",
@@ -430,35 +434,37 @@ const downloadText = (name, text) => {
 
 /* ═════════════════════════════════════════════════════════
    汇率
-   内部一律以 JPY 为锚:rate[X] = 1 单位 X 值多少 JPY,定点整数 ×10^8。
-   任意两币种的换算走交叉汇率,所以切换主币种不用重算。
-   汇率只影响「参考性」的合计(热力图、全部视图),不进交易表。
+   内部固定以 USD 为锚:rate[X] = 1 单位 X 值多少 USD,定点整数 ×10^8。
+   每个有账目的日期都存一份完整汇率快照;当天未更新时复制最近一份。
+   任意两币种通过 USD 交叉换算,用户不需要选择「主货币」。
    ═════════════════════════════════════════════════════════ */
 const FX_SCALE = 1e8;
-const ANCHOR = "JPY";
+const ANCHOR = "USD";
+const ALL_RATE_CODES = Object.keys(CUR);
 
 /* 按天存一组汇率,写入后永不修改——历史统计才不会漂。
    rate[X] = 1 单位 X 值多少 ANCHOR,定点整数 ×10^8。 */
 const SEED_FX_DAILY = {
   [TODAY]: {
-    JPY: Math.round(1 * FX_SCALE),
-    CNY: Math.round(23.60 * FX_SCALE),
-    USD: Math.round(160.00 * FX_SCALE),
-    EUR: Math.round(183.80 * FX_SCALE),
-    KRW: Math.round(0.1127 * FX_SCALE),
-    GBP: Math.round(214.20 * FX_SCALE),
-    HKD: Math.round(20.30 * FX_SCALE),
-    SGD: Math.round(124.00 * FX_SCALE),
-    THB: Math.round(4.87 * FX_SCALE),
-    PHP: Math.round(2.75 * FX_SCALE),
-    MYR: Math.round(37.50 * FX_SCALE),
-    IDR: Math.round(0.0098 * FX_SCALE),
-    INR: Math.round(1.85 * FX_SCALE),
-    AUD: Math.round(105.00 * FX_SCALE),
-    CAD: Math.round(116.00 * FX_SCALE),
-    CHF: Math.round(198.00 * FX_SCALE),
-    NZD: Math.round(96.00 * FX_SCALE),
-    TWD: Math.round(5.20 * FX_SCALE),
+    USD: Math.round(1 * FX_SCALE),
+    JPY: Math.round(0.00625 * FX_SCALE),
+    CNY: Math.round(0.1475 * FX_SCALE),
+    EUR: Math.round(1.14875 * FX_SCALE),
+    KRW: Math.round(0.000704375 * FX_SCALE),
+    GBP: Math.round(1.33875 * FX_SCALE),
+    HKD: Math.round(0.126875 * FX_SCALE),
+    MOP: Math.round(0.1231796 * FX_SCALE),
+    SGD: Math.round(0.775 * FX_SCALE),
+    THB: Math.round(0.0304375 * FX_SCALE),
+    PHP: Math.round(0.0171875 * FX_SCALE),
+    MYR: Math.round(0.234375 * FX_SCALE),
+    IDR: Math.round(0.00006125 * FX_SCALE),
+    INR: Math.round(0.0115625 * FX_SCALE),
+    AUD: Math.round(0.65625 * FX_SCALE),
+    CAD: Math.round(0.725 * FX_SCALE),
+    CHF: Math.round(1.2375 * FX_SCALE),
+    NZD: Math.round(0.6 * FX_SCALE),
+    TWD: Math.round(0.0325 * FX_SCALE),
     __src: "seed",
   },
 };
@@ -472,6 +478,32 @@ const rateOf = (rates, code) => {
   return null;
 };
 
+/* 挂钩币也物化到快照中,保证快照包含全部支持币种。 */
+const completeRates = (rates) => {
+  const out = { ...rates };
+  ALL_RATE_CODES.forEach((code) => {
+    const value = rateOf(out, code);
+    if (value) out[code] = Math.round(value);
+  });
+  return out;
+};
+
+/* 旧存档与旧备份以 JPY 为锚;加载时一次性换成 USD。 */
+const reanchorRatesToUsd = (rates) => {
+  const usd = rates?.USD;
+  if (!usd) return completeRates(rates || {});
+  const out = {};
+  Object.entries(rates).forEach(([code, value]) => {
+    if (code.startsWith("__")) out[code] = value;
+    else if (Number.isFinite(value) && value > 0) out[code] = Math.round((value * FX_SCALE) / usd);
+  });
+  out.USD = FX_SCALE;
+  return completeRates(out);
+};
+const reanchorDailyToUsd = (daily) => Object.fromEntries(
+  Object.entries(daily || {}).map(([date, rates]) => [date, reanchorRatesToUsd(rates)])
+);
+
 /* 取某天的汇率。当天没有(周末、节假日、离线)就沿用最近一个有值的日子 */
 const ratesOn = (daily, date) => {
   if (daily[date]) return { rates: daily[date], at: date, carried: false };
@@ -479,6 +511,20 @@ const ratesOn = (daily, date) => {
   for (const k of Object.keys(daily)) if (k <= date && (best === null || k > best)) best = k;
   return best ? { rates: daily[best], at: best, carried: true } : null;
 };
+
+/* 落账时物化当天快照。当天没有手动更新就复制最近一次完整汇率。 */
+const carryRatesToDate = (daily, date) => {
+  if (!date || daily[date]) return daily;
+  const snap = ratesOn(daily, date);
+  if (!snap) return daily;
+  return {
+    ...daily,
+    [date]: completeRates({ ...snap.rates, __src: "carried", __from: snap.at }),
+  };
+};
+const carryRatesToDates = (daily, dates) => [...new Set(dates.filter(Boolean))]
+  .sort()
+  .reduce((acc, date) => carryRatesToDate(acc, date), daily);
 
 /* 换算。date 应传账目钉住的汇率日(x.fxd),没有才退回账目日期 */
 const convertOn = (minor, from, to, date, daily) => {
@@ -516,45 +562,41 @@ const rateSpan = (daily, from, to, dates) => {
 };
 
 const latestDate = (daily) => Object.keys(daily).sort().pop() || null;
-const earliestDate = (rows) => rows.map((r) => r.date).filter(Boolean).sort()[0] || null;
 const mergeDay = (daily, date, rates, src = "api") => ({
   ...daily,
-  [date]: { ...(daily[date] || {}), ...rates, __src: src },
+  [date]: completeRates({ ...(daily[date] || {}), ...rates, __src: src }),
 });
 const mergeSeries = (daily, byDay, src = "api") =>
   Object.entries(byDay || {}).reduce((acc, [date, rates]) => mergeDay(acc, date, rates, src), daily);
 
-async function fetchRates(codes) {
-  const wanted = [...new Set(["JPY", ...codes])].filter((c) => CUR[c]?.src !== "manual");
-  const to = wanted.filter((c) => c !== "JPY").join(",");
+async function fetchRates(codes = ALL_RATE_CODES) {
+  const wanted = [...new Set([ANCHOR, ...codes])].filter((c) => CUR[c]?.src === "api" || c === ANCHOR);
+  const to = wanted.filter((c) => c !== ANCHOR).join(",");
   const fromOpenApi = async () => {
-    const res = await fetch("https://open.er-api.com/v6/latest/JPY", { cache: "no-store" });
+    const res = await fetch(`https://open.er-api.com/v6/latest/${ANCHOR}`, { cache: "no-store" });
     if (!res.ok) throw new Error("rate api failed");
     const data = await res.json();
     if (data.result && data.result !== "success") throw new Error("rate api returned failure");
     return { date: data.time_last_update_utc ? ymd(new Date(data.time_last_update_utc)) : TODAY, rates: data.rates || {} };
   };
   const fromFrankfurter = async () => {
-    const res = await fetch(`https://api.frankfurter.app/latest?from=JPY${to ? `&to=${encodeURIComponent(to)}` : ""}`, { cache: "no-store" });
+    const res = await fetch(`https://api.frankfurter.app/latest?from=${ANCHOR}${to ? `&to=${encodeURIComponent(to)}` : ""}`, { cache: "no-store" });
     if (!res.ok) throw new Error("fallback rate api failed");
     const data = await res.json();
     return { date: data.date || TODAY, rates: data.rates || {} };
   };
 
   const got = await fromOpenApi().catch(fromFrankfurter);
-  const rates = { JPY: Math.round(FX_SCALE) };
+  const rates = { [ANCHOR]: Math.round(FX_SCALE) };
   wanted.forEach((code) => {
-    if (code === "JPY") return;
-    const perJpy = got.rates[code];
-    if (perJpy) rates[code] = Math.round((1 / perJpy) * FX_SCALE);
+    if (code === ANCHOR) return;
+    const perUsd = got.rates[code];
+    if (perUsd) rates[code] = Math.round((1 / perUsd) * FX_SCALE);
   });
-  if (Object.keys(rates).length <= 1 && wanted.length > 1) throw new Error("no usable rates");
-  return { date: got.date, rates };
-}
-
-async function fetchSeries(codes) {
-  const got = await fetchRates(codes);
-  return { [got.date]: got.rates };
+  const complete = completeRates(rates);
+  const missing = ALL_RATE_CODES.filter((code) => !rateOf(complete, code));
+  if (missing.length) throw new Error(`missing rates: ${missing.join(",")}`);
+  return { date: got.date, rates: complete };
 }
 
 /* ═════════════════════════════════════════════════════════
@@ -873,13 +915,20 @@ function buildBackupImportPlan(sections, warnings, text, { existingCats = [], ex
   }).filter((f) => f.amount > 0 && f.name);
 
   const fxToMerge = {};
+  const usdBased = fxRows.some((r) => String(r.rateToUSD || "").trim());
   fxRows.forEach((r) => {
     const date = normalizeDate(r.date);
     const code = String(r.currency || "").trim().toUpperCase();
-    const val = Number(String(r.rateToJPY || "").trim());
+    const val = Number(String(usdBased ? r.rateToUSD : r.rateToJPY || "").trim());
     if (!date || !CUR[code] || !Number.isFinite(val) || val <= 0) return;
     fxToMerge[date] = { ...(fxToMerge[date] || {}), [code]: Math.round(val * FX_SCALE), __src: r.source || "backup" };
   });
+  if (!usdBased) {
+    Object.keys(fxToMerge).forEach((date) => {
+      if (fxToMerge[date].USD) fxToMerge[date] = reanchorRatesToUsd(fxToMerge[date]);
+      else delete fxToMerge[date];
+    });
+  }
 
   return {
     kind: "backup",
@@ -1130,7 +1179,7 @@ const Seg = ({ value, onChange, items, sm }) => (
 );
 /* 标签宽度按语言自适应:中日韩两三个字,英文单词更长 */
 /* 各统计页顶部的「当前主货币」提示 */
-const MainHint = ({ code, cls = "", label = "x.mainNow", onClick }) => {
+const MainHint = ({ code, cls = "", label = "x.currentCurrency", onClick }) => {
   const { t } = useT();
   const content = (
     <>
@@ -1218,39 +1267,24 @@ const CurrencySheet = ({ value, onPick, onClose, title, favs }) => {
 
 
 /* ═════════════════════════════════════════════════════════
-   首次设置:主要货币 + 常用货币
-   常用货币只决定选择器显示哪几种,汇率仍按天整组存,
-   所以以后增删常用货币不需要重算任何历史。
+   首次设置:常用货币 + 语言。汇率基准由系统固定为 USD。
    ═════════════════════════════════════════════════════════ */
-function CurrencySetup({ lang, onDone }) {
+function CurrencySetup({ lang, setLang, onDone }) {
   const { t } = useT();
-  const [main, setMain] = useState(() => LANG_CUR[lang] || "JPY");
-  /* 默认只选主要货币,常用货币由用户按需添加 */
   const [favs, setFavs] = useState(() => [LANG_CUR[lang] || "JPY"]);
-  const [sheet, setSheet] = useState(null);
-
   const toggle = (c) => setFavs((f) => (f.includes(c) ? f.filter((x) => x !== c) : [...f, c]));
-  const ok = favs.length >= 1 && favs.includes(main);
+  const ok = favs.length >= 1;
 
   return (
     <div className="flex flex-col h-full relative" style={{ background: C.page }}>
       <div className="px-5 pt-8 pb-4 shrink-0" style={{ background: C.surface }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: C.ink }}>{t("x.setupTitle")}</div>
-        <div style={{ fontSize: 12.5, color: C.ink3, marginTop: 4, lineHeight: 1.6 }}>{t("x.setupSub")}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: C.ink }}>{t("setup.title")}</div>
+        <div style={{ fontSize: 12.5, color: C.ink3, marginTop: 4, lineHeight: 1.6 }}>{t("setup.sub")}</div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-5 pt-5 pb-2"><span className="lab">{t("x.pickMain")}</span></div>
-        <button onClick={() => setSheet("main")} className="w-full flex items-center gap-3 px-5 py-3.5"
-          style={{ background: C.surface, borderTop: `1px solid ${C.hair}`, borderBottom: `1px solid ${C.hair}` }}>
-          <span style={{ fontSize: 24 }}>{flag(main)}</span>
-          <span className="num shrink-0" style={{ fontSize: 13, fontWeight: 700, color: C.ink2 }}>{main}</span>
-          <span className="flex-1 text-left truncate" style={{ fontSize: 15, color: C.ink }}>{t(`cur.${main}`)}</span>
-          <ChevronDown size={16} color={C.ink3} />
-        </button>
-
         <div className="px-5 pt-5 pb-1 flex items-baseline gap-2">
-          <span className="lab">{t("x.favs")}</span>
+          <span className="lab">{t("setup.currencies")}</span>
           <span className="num" style={{ fontSize: 11, color: C.ink3 }}>{favs.length}</span>
         </div>
         <div className="px-5 pb-2" style={{ fontSize: 11, color: C.ink3, lineHeight: 1.6 }}>{t("x.favsHint")}</div>
@@ -1258,9 +1292,9 @@ function CurrencySetup({ lang, onDone }) {
           {[...new Set([...DEFAULT_FAVS, ...favs, ...Object.keys(CUR)])].map((c) => {
             const on = favs.includes(c);
             return (
-              <button key={c} disabled={c === main} onClick={() => toggle(c)}
+              <button key={c} onClick={() => toggle(c)}
                 className="flex items-center gap-1.5 px-2 py-2"
-                style={{ borderRadius: C.r, background: on ? C.innSoft : C.surface, opacity: c === main ? 0.65 : 1,
+                style={{ borderRadius: C.r, background: on ? C.innSoft : C.surface,
                   boxShadow: `inset 0 0 0 ${on ? 1.5 : 1}px ${on ? C.brand : C.hair}` }}>
                 <span style={{ fontSize: 15 }}>{flag(c)}</span>
                 <span className="num truncate" style={{ fontSize: 11.5, fontWeight: on ? 700 : 500, color: on ? C.brand : C.ink2 }}>{c}</span>
@@ -1270,31 +1304,27 @@ function CurrencySetup({ lang, onDone }) {
           })}
         </div>
 
-        {!favs.includes(main) && (
-          <div className="mx-5 mb-3 rounded-lg px-3 py-2" style={{ background: C.warn }}>
-            <span style={{ fontSize: 11.5, color: C.warnInk }}>{t("x.needMain")}</span>
-          </div>
-        )}
+        <div className="px-5 pt-5 pb-2"><span className="lab">{t("s.language")}</span></div>
+        <div className="grid grid-cols-2 gap-2 px-5 pb-3">
+          {LANGS.map((l) => (
+            <button key={l.c} onClick={() => setLang(l.c)} className="flex items-center gap-2 px-3 py-2.5"
+              style={{ borderRadius: C.r, background: lang === l.c ? C.innSoft : C.surface,
+                boxShadow: `inset 0 0 0 ${lang === l.c ? 1.5 : 1}px ${lang === l.c ? C.brand : C.hair}` }}>
+              <span className="num" style={{ fontSize: 11.5, fontWeight: 700, color: lang === l.c ? C.brand : C.ink2 }}>{l.c.toUpperCase()}</span>
+              <span className="truncate" style={{ fontSize: 13, color: C.ink }}>{l.native}</span>
+              {lang === l.c && <Check size={12} color={C.brand} strokeWidth={3} className="ml-auto shrink-0" />}
+            </button>
+          ))}
+        </div>
 
         <div className="p-5">
-          <button onClick={() => ok && onDone({ main, favs })} disabled={!ok} className="w-full py-3.5"
+          <button onClick={() => ok && onDone({ favs })} disabled={!ok} className="w-full py-3.5"
             style={{ background: ok ? C.brand : C.line, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: C.R }}>
             {t("x.start")}
           </button>
         </div>
       </div>
 
-      {sheet === "main" && (
-        <CurrencySheet title={t("x.pickMain")} value={main}
-          onPick={(v) => {
-            setFavs((f) => {
-              const next = f.filter((c) => c !== main);   // 换主币时不把旧的强行留下
-              return next.includes(v) ? next : [v, ...next];
-            });
-            setMain(v);
-          }}
-          onClose={() => setSheet(null)} />
-      )}
     </div>
   );
 }
@@ -1334,8 +1364,7 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
   const updateFx = async () => {
     setFxBusy(true);
     try {
-      const codes = [...new Set([...favs, main])];
-      const got = await fetchRates(codes);
+      const got = await fetchRates(ALL_RATE_CODES);
       const prev = ratesOn(fx, TODAY)?.rates || {};
       const merged = { ...prev, ...got.rates };
       setFx((f) => mergeDay(f, got.date, merged, "api"));
@@ -1573,36 +1602,35 @@ function Record({ cats, quicks, txns, onSave, cur, setCur, goQuick, goCats, fx, 
   );
 }
 
-function FxScreen({ fx, setFx, cur, favs, onBack }) {
+function FxScreen({ fx, setFx, onBack }) {
   const { t, lang } = useT();
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState(null);
   const snap = ratesOn(fx, TODAY);
-  const codes = [...new Set([cur, ...(favs || DEFAULT_FAVS)])];
   const copy = {
     zh: [
       "汇率来自 ExchangeRate-API 的公开参考汇率，并非银行实时成交汇率。实际刷卡、换汇、转账时，请以银行、发卡组织或支付平台的最终汇率为准。",
       "这里的汇率只用于多币种账目的参考合计、账本热力图和统计折算，不适合用于交易、结算或投资判断。",
-      "点「更新」时，应用会尝试获取最新公开参考汇率。公开接口通常有延迟，所以请把它当作记账统计用的参考值。",
-      "更新只会影响之后的参考统计。已经记录的账目会保留当时钉住的汇率日期，不会因为之后更新而改变。",
+      "点「更新」时，应用会一次获取所有支持币种相对美元的最新公开参考汇率。",
+      "每次记账都会保存当天的完整汇率快照。当天没有更新时沿用最近一次汇率，之后更新不会改变已记账目。",
     ],
     ja: [
       "為替レートは ExchangeRate-API の公開参考レートです。銀行のリアルタイム取引レートではありません。カード、両替、送金の実際のレートは銀行、カード会社、決済サービスの最終レートを確認してください。",
       "このレートは複数通貨の参考合計、ヒートマップ、統計換算にだけ使います。取引、決済、投資判断には向いていません。",
-      "更新すると最新の公開参考レートを取得します。公開 API には遅延があるため、記帳統計用の参考値として扱ってください。",
-      "更新しても記録済みの明細は当時固定されたレート日付を保持し、後から変わりません。",
+      "更新すると、対応するすべての通貨の対米ドルレートを一度に取得します。",
+      "記録ごとに当日の完全なレートを保存します。当日更新していない場合は直近のレートを引き継ぎます。",
     ],
     en: [
       "Rates come from ExchangeRate-API's public reference feed. They are not real-time bank rates. For card payments, currency exchange, or transfers, use the final rate from your bank, card network, or payment provider.",
       "These rates are only for reference totals, heatmaps, and analytics across currencies. They are not suitable for trading, settlement, or investment decisions.",
-      "Update tries to fetch the latest public reference rates. Public feeds can lag, so treat them as bookkeeping estimates.",
-      "Updating does not change entries already recorded. Existing entries keep the rate date they were saved with.",
+      "Update fetches USD-based reference rates for every supported currency at once.",
+      "Each entry saves a complete rate snapshot for that day. If you did not update that day, it carries forward the latest snapshot.",
     ],
     ko: [
       "환율은 ExchangeRate-API의 공개 참고 환율입니다. 은행의 실시간 거래 환율이 아닙니다. 카드 결제, 환전, 송금의 실제 환율은 은행, 카드사, 결제 서비스의 최종 환율을 확인하세요.",
       "이 환율은 여러 통화의 참고 합계, 히트맵, 통계 환산에만 사용됩니다. 거래, 정산, 투자 판단에는 적합하지 않습니다.",
-      "업데이트를 누르면 최신 공개 참고 환율을 가져옵니다. 공개 API는 지연될 수 있으므로 가계부 통계용 참고값으로 봐 주세요.",
-      "업데이트해도 이미 기록된 항목은 당시 저장된 환율 날짜를 유지하며 나중에 바뀌지 않습니다.",
+      "업데이트를 누르면 지원하는 모든 통화의 미 달러 기준 환율을 한 번에 가져옵니다.",
+      "기록할 때마다 그날의 전체 환율을 저장합니다. 그날 업데이트하지 않았다면 가장 최근 환율을 이어서 사용합니다.",
     ],
   }[lang] || [];
 
@@ -1613,7 +1641,7 @@ function FxScreen({ fx, setFx, cur, favs, onBack }) {
   const update = async () => {
     setBusy(true);
     try {
-      const got = await fetchRates(codes);
+      const got = await fetchRates(ALL_RATE_CODES);
       const prev = ratesOn(fx, got.date)?.rates || {};
       setFx((f) => mergeDay(f, got.date, { ...prev, ...got.rates }, "api"));
       flash(`${t("x.done")} · ${got.date}`);
@@ -2955,14 +2983,11 @@ function Importer({ onBack, cur, favs, cats, setCats, setFixed, txns, onImport, 
 /* ═════════════════════════════════════════════════════════
    设置
    ═════════════════════════════════════════════════════════ */
-function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, fx, setFx, favs, setFavs, txns, cats }) {
+function SettingsScreen({ go, cur, lang, setLang, fixed, pendingCount, fx, favs, setFavs, txns, cats }) {
   const { t } = useT();
   const L = useLabel();
   const [sheet, setSheet] = useState(null);
   const [draftFavs, setDraftFavs] = useState(() => [...(favs || [])]);
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState(null);
-  const added = (draftFavs || []).filter((c) => !(favs || []).includes(c));
   const exportCsv = () => {
     const catById = new Map((cats || []).map((c) => [c.id, c]));
     const out = [];
@@ -2985,7 +3010,7 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
     });
     out.push("");
     out.push("#EXCHANGE_RATES");
-    out.push(csvLine(["date", "currency", "rateToJPY", "source"]));
+    out.push(csvLine(["date", "currency", "rateToUSD", "source"]));
     Object.entries(fx || {}).sort(([a], [b]) => a.localeCompare(b)).forEach(([date, rates]) => {
       Object.entries(rates).filter(([code]) => !code.startsWith("__")).sort(([a], [b]) => a.localeCompare(b)).forEach(([code, val]) => {
         out.push(csvLine([date, code, fxFmt(val / FX_SCALE), rates.__src || ""]));
@@ -2994,23 +3019,8 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
     downloadText(`komorebi_kakeibo_${TODAY}.csv`, out.join("\n"));
   };
 
-  /* 确认修改:新增的币种去补齐历史汇率,补的是【当时】的真实汇率,
-     不是拿今天的汇率重算。已有的日期与币种一概不覆盖。 */
-  const applyFavs = async () => {
+  const applyFavs = () => {
     setFavs(draftFavs);
-    const need = added.filter((c) => CUR[c]?.src === "api");
-    if (!need.length) { setSheet("favs"); return; }
-    setBusy(true);
-    try {
-      const from = earliestDate(txns) || TODAY;
-      const byDay = await fetchSeries(need, from);
-      const n = Object.keys(byDay).length;
-      setFx((f) => mergeSeries(f, byDay, "api"));
-      setNote({ text: t("x.backfillOk").replace("{n}", n) });
-    } catch {
-      setNote({ text: t("x.backfillFail"), warn: true });
-    }
-    setBusy(false);
     setSheet("favs");
   };
   const monthly = sumOn(fixed.filter((f) => f.on).map((f) => ({ amount: f.amount, cur: f.cur || cur, date: TODAY })), cur, fx).total;
@@ -3044,12 +3054,6 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
         </div>
         <div className="px-4 pt-5 pb-2"><span className="lab">{t("s.groupGeneral")}</span></div>
         <div className="mx-3.5 overflow-hidden soft-panel">
-          <button onClick={() => setSheet("cur")} className="w-full flex items-center gap-2 px-4 py-3.5 text-left" style={{ borderBottom: `1px solid ${C.soft}` }}>
-            <span className="flex-1 min-w-0 truncate" style={{ fontSize: 15.5, color: C.ink }}>{t("s.currency")}</span>
-            <span className="num shrink-0" style={{ fontSize: 12.5, fontWeight: 600, color: C.ink3 }}>{cur}</span>
-            <span className="shrink-0 truncate" style={{ fontSize: 14.5, color: C.ink2, maxWidth: 110 }}>{t(`cur.${cur}`)}</span>
-            <ChevronRight size={15} color={C.hair} className="shrink-0" />
-          </button>
           <button onClick={() => setSheet("favs")} className="w-full flex items-center gap-2 px-4 py-3.5 text-left"
             style={{ borderBottom: `1px solid ${C.soft}` }}>
             <span className="flex-1 min-w-0 truncate" style={{ fontSize: 15.5, color: C.ink }}>{t("x.favs")}</span>
@@ -3066,15 +3070,9 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
         <div style={{ height: 16 }} />
       </div>
 
-      {sheet === "cur" && <CurrencySheet favs={favs} value={cur} onPick={setCur} onClose={() => setSheet(null)} />}
       {sheet === "favs" && (
         <Sheet title={t("x.favs")} onClose={() => setSheet(null)}>
           <div className="px-4 py-2" style={{ fontSize: 11.5, color: C.ink3, lineHeight: 1.6 }}>{t("x.favsHint")}</div>
-          {note && (
-            <div className="mx-3 mb-2 rounded-lg px-3 py-2" style={{ background: note.warn ? C.warn : C.innSoft }}>
-              <span style={{ fontSize: 11.5, color: note.warn ? C.warnInk : C.brand, lineHeight: 1.5 }}>{note.text}</span>
-            </div>
-          )}
           <div className="px-3 pb-2"><span className="lab">{t("x.favsView")}</span></div>
           <div className="px-3 pb-3">
             {favs.map((c) => (
@@ -3101,17 +3099,14 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
             {Object.keys(CUR).map((c) => {
               const on = draftFavs.includes(c);
               return (
-                <button key={c} disabled={c === cur}
+                <button key={c}
                   onClick={() => setDraftFavs(on ? draftFavs.filter((x) => x !== c) : [...draftFavs, c])}
                   className="flex items-center gap-1.5 px-2 py-2"
-                  style={{ borderRadius: C.r, background: on ? C.innSoft : C.surface, opacity: c === cur ? 0.6 : 1,
+                  style={{ borderRadius: C.r, background: on ? C.innSoft : C.surface,
                     boxShadow: `inset 0 0 0 ${on ? 1.5 : 1}px ${on ? C.brand : C.hair}` }}>
                   <span style={{ fontSize: 15 }}>{flag(c)}</span>
                   <span className="num truncate" style={{ fontSize: 11.5, fontWeight: on ? 700 : 500, color: on ? C.brand : C.ink2 }}>{c}</span>
-                  {!favs.includes(c) && draftFavs.includes(c) && (
-                    <span className="ml-auto shrink-0 rounded-full px-1 py-0.5"
-                      style={{ background: C.brand, color: "#fff", fontSize: 8.5, fontWeight: 700 }}>{t("x.newCur")}</span>
-                  )}
+                  {on && <Check size={12} color={C.brand} strokeWidth={3} className="ml-auto shrink-0" />}
                 </button>
               );
             })}
@@ -3134,20 +3129,12 @@ function SettingsScreen({ go, cur, setCur, lang, setLang, fixed, pendingCount, f
           <div className="w-full p-4" style={{ background: C.surface, borderRadius: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>{t("x.confirmTitle")}</div>
             <div className="mt-2" style={{ fontSize: 12.5, color: C.ink2, lineHeight: 1.7 }}>{t("x.confirmBody")}</div>
-            {added.length > 0 && (
-              <div className="mt-2 rounded-lg px-2.5 py-2" style={{ background: C.innSoft }}>
-                <div className="num" style={{ fontSize: 11.5, fontWeight: 700, color: C.brand }}>
-                  {added.map((c) => `${flag(c)} ${c}`).join("  ")}
-                </div>
-                <div style={{ fontSize: 11.5, color: C.ink2, lineHeight: 1.6, marginTop: 3 }}>{t("x.willBackfill")}</div>
-              </div>
-            )}
             <div className="flex gap-2 mt-4">
-              <button onClick={() => setSheet("favsEdit")} disabled={busy} className="flex-1 py-2.5"
+              <button onClick={() => setSheet("favsEdit")} className="flex-1 py-2.5"
                 style={{ background: C.soft, fontSize: 13.5, color: C.ink, borderRadius: C.r }}>{t("x.cancel")}</button>
-              <button onClick={applyFavs} disabled={busy} className="flex-1 py-2.5"
-                style={{ background: busy ? C.line : C.brand, color: "#fff", fontSize: 13.5, fontWeight: 600, borderRadius: C.r }}>
-                {busy ? t("x.backfill") : t("x.confirm")}
+              <button onClick={applyFavs} className="flex-1 py-2.5"
+                style={{ background: C.brand, color: "#fff", fontSize: 13.5, fontWeight: 600, borderRadius: C.r }}>
+                {t("x.confirm")}
               </button>
             </div>
           </div>
@@ -3205,7 +3192,9 @@ export default function App() {
         if (d.quicks) setQuicks(d.quicks);
         if (d.fixed) setFixed(d.fixed);
         setBudgets(d.budgets || {});
-        if (d.fx) setFx(d.fx);
+        if (d.fx) setFx(d.fxAnchor === "USD" ? Object.fromEntries(
+          Object.entries(d.fx).map(([date, rates]) => [date, completeRates(rates)])
+        ) : reanchorDailyToUsd(d.fx));
         if (d.fxPairs?.length) setFxPairs(d.fxPairs.map((p, i) => ({ id: p.id || `fxp_${i}`, side: p.side || "from", value: p.value ?? "1", from: p.from || "CNY", to: p.to || d.cur || cur })));
         if (d.favs?.length) setFavs(d.favs);
         if (d.cur) setCur(d.cur);
@@ -3224,28 +3213,44 @@ export default function App() {
   /* 任何一处状态变化就存盘(内部有 400ms 合并) */
   useEffect(() => {
     if (!ready) return;
-    saveAll({ lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, ledgerCur, setupDone, batches });
+    saveAll({ lang, txns, cats, quicks, fixed, budgets, fx, fxAnchor: ANCHOR, fxPairs, favs, cur, ledgerCur, setupDone, batches });
   }, [ready, lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, ledgerCur, setupDone, batches]);
 
   const t = useMemo(() => (k) => DICT[lang]?.[k] ?? DICT.zh[k] ?? k, [lang]);
   const ctx = useMemo(() => ({ lang, t }), [lang, t]);
 
   /* 记账时就钉住用哪一天的汇率,之后回填新汇率也不会改动这笔账 */
-  const add = (x) => setTxns((xs) => {
-    const r = ratesOn(fx, x.date);
-    return [...xs, { ...x, id: Date.now() + Math.random(), fx: null, fxd: r ? r.at : null }];
-  });
-  const editTxn = (x) => setTxns((xs) => xs.map((z) => (z.id === x.id ? x : z)));
+  const add = (x) => {
+    const canPin = !!ratesOn(fx, x.date);
+    if (canPin) setFx((f) => carryRatesToDate(f, x.date));
+    setTxns((xs) => [...xs, { ...x, id: Date.now() + Math.random(), fx: null, fxd: canPin ? x.date : null }]);
+  };
+  const editTxn = (x) => {
+    const old = txns.find((z) => z.id === x.id);
+    const moved = old && old.date !== x.date;
+    const canPin = !!ratesOn(fx, x.date);
+    if (moved && canPin) setFx((f) => carryRatesToDate(f, x.date));
+    setTxns((xs) => xs.map((z) => (z.id === x.id ? { ...x, fxd: moved ? (canPin ? x.date : null) : x.fxd } : z)));
+  };
   /* 批量导入:先按 srcKey 去重,再一次性并入 */
-  const importTxns = (rows) => setTxns((xs) => {
+  const importTxns = (rows) => {
+    const dates = rows.filter((r) => !r.fxd && ratesOn(fx, r.date)).map((r) => r.date);
+    if (dates.length) setFx((f) => carryRatesToDates(f, dates));
+    setTxns((xs) => {
     const have = new Set(xs.filter((z) => z.srcKey).map((z) => z.srcKey));
-    return [...xs, ...rows.filter((r) => !have.has(r.srcKey))];
-  });
+    return [...xs, ...rows.filter((r) => !have.has(r.srcKey)).map((r) => ({ ...r, fxd: r.fxd || (ratesOn(fx, r.date) ? r.date : null) }))];
+    });
+  };
   const delTxn = (id) => setTxns((xs) => xs.filter((z) => z.id !== id));
-  const catchUp = () => setTxns((xs) => {
-    const a = pendingFixed(fixed, xs);
-    return a.length ? [...xs, ...a.map((z, i) => ({ ...z, id: Date.now() + i, fxd: ratesOn(fx, z.date)?.at ?? null }))] : xs;
-  });
+  const catchUp = () => {
+    const pending = pendingFixed(fixed, txns);
+    const dates = pending.filter((z) => ratesOn(fx, z.date)).map((z) => z.date);
+    if (dates.length) setFx((f) => carryRatesToDates(f, dates));
+    setTxns((xs) => {
+      const rows = pendingFixed(fixed, xs);
+      return rows.length ? [...xs, ...rows.map((z, i) => ({ ...z, id: Date.now() + i, fxd: ratesOn(fx, z.date) ? z.date : null }))] : xs;
+    });
+  };
   useEffect(() => { catchUp(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [fixed]);
 
   const pendingCount = pendingFixed(fixed, txns).length;
@@ -3277,7 +3282,10 @@ export default function App() {
         <style>{CSS}</style>
         <div className="w-full flex justify-center" style={{ background: "linear-gradient(180deg,#DDEFE8 0%,#E9EDF5 52%,#E2E7EF 100%)", minHeight: "100vh", fontFamily: F_UI }}>
           <div className="app-frame relative flex flex-col w-full" style={{ maxWidth: 400, height: "100vh", background: C.page }}>
-            <CurrencySetup lang={lang} onDone={({ main, favs: f }) => { setCur(main); setLedgerCur(main); setFavs(f); setSetupDone(true); }} />
+            <CurrencySetup lang={lang} setLang={setLang} onDone={({ favs: f }) => {
+              const first = f[0] || LANG_CUR[lang] || "USD";
+              setCur(first); setLedgerCur(first); setFavs(f); setSetupDone(true);
+            }} />
           </div>
         </div>
       </LangCtx.Provider>
@@ -3288,7 +3296,7 @@ export default function App() {
     sub === "quick"  ? <QuickEditor quicks={quicks} setQuicks={setQuicks} cats={cats} onBack={() => setSub(null)} cur={cur} /> :
     sub === "fixed"  ? <FixedCosts fixed={fixed} setFixed={setFixed} cats={cats} txns={txns} onCatchUp={catchUp} onBack={() => setSub(null)} cur={cur} fx={fx} /> :
     sub === "cats"   ? <CatEditor cats={cats} setCats={setCats} onBack={() => setSub(null)} /> :
-    sub === "fx"     ? <FxScreen fx={fx} setFx={setFx} cur={cur} favs={favs} onBack={() => setSub(null)} /> :
+    sub === "fx"     ? <FxScreen fx={fx} setFx={setFx} onBack={() => setSub(null)} /> :
     sub === "import" ? <Importer onBack={() => setSub(null)} cur={cur} favs={favs} cats={cats} setCats={setCats} setFixed={setFixed}
                          txns={txns} onImport={importTxns} fx={fx} setFx={setFx}
                          batches={batches} addBatch={(b) => setBatches((bs) => [...bs, b])} /> :
@@ -3299,8 +3307,8 @@ export default function App() {
     tab === "report" ? <Report txns={txns} cats={cats} cur={cur} fx={fx} y={y} m={m} setYm={setYm} main={cur} favs={favs} /> :
     tab === "stat"   ? <Analysis txns={txns} cats={cats} budgets={budgets} setBudgets={setBudgets} y={y} m={m} setYm={setYm}
                          cur={cur} fx={fx} goFx={() => setSub("fx")} main={cur} /> :
-                       <SettingsScreen go={setSub} cur={cur} setCur={setCur} lang={lang} setLang={setLang}
-                         fixed={fixed} pendingCount={pendingCount} fx={fx} setFx={setFx}
+                       <SettingsScreen go={setSub} cur={cur} lang={lang} setLang={setLang}
+                         fixed={fixed} pendingCount={pendingCount} fx={fx}
                          favs={favs} setFavs={setFavs} txns={txns} cats={cats} />;
 
   return (

@@ -8,7 +8,7 @@ const stub='const React={createElement:()=>null},useState=(i)=>[typeof i==="func
 const mod={exports:{}};
 let saved=null;
 new Function('module','window','fetch','console', stub+icons+out.replace('export default','module.exports.App=')
- +'\nObject.assign(module.exports,{buildImportPlan,toMinor,money,ratesOn,convertOn,sumOn,SEED_FX_DAILY,CUR,saveAll,loadAll});')
+ +'\nObject.assign(module.exports,{buildImportPlan,toMinor,money,ratesOn,convertOn,sumOn,SEED_FX_DAILY,CUR,saveAll,loadAll,carryRatesToDate,reanchorDailyToUsd,FX_SCALE,ANCHOR});')
  (mod,{storage:{get:async()=>{ if(!saved) throw new Error('no key'); return {value:saved};},set:async(k,v)=>{saved=v;return{key:k,value:v}}}},()=>Promise.reject(),console);
 
 const M=mod.exports;
@@ -16,6 +16,13 @@ let pass=0,fail=0;
 const ok=(n,c,e='')=>{c?(pass++,console.log('  ✓',n,e)):(fail++,console.log('  ✗',n,e));};
 
 console.log('\n【端到端:导入 → 统计】');
+ok('内部汇率基准已固定为 USD', M.ANCHOR==='USD');
+const seedRates=M.SEED_FX_DAILY[Object.keys(M.SEED_FX_DAILY)[0]];
+ok('初始快照包含所有支持币种', Object.keys(M.CUR).every(c=>seedRates[c]>0));
+const carried=M.carryRatesToDate(M.SEED_FX_DAILY,'2099-01-02');
+ok('未更新当天会生成当天完整快照', !!carried['2099-01-02'] && Object.keys(M.CUR).every(c=>carried['2099-01-02'][c]>0));
+const legacy=M.reanchorDailyToUsd({'2026-01-01':{JPY:M.FX_SCALE,CNY:Math.round(23.6*M.FX_SCALE),USD:160*M.FX_SCALE}});
+ok('旧 JPY 基准汇率可等价迁移', M.convertOn(10000,'CNY','JPY','2026-01-01',legacy)===2360);
 const text=fs.readFileSync('tests/komorebi_sample.csv','utf8');
 const plan=M.buildImportPlan(text,{cutoff:'2026-07-31',existingCats:[]});
 
@@ -48,7 +55,7 @@ ok('无 2070 年数据', rows.every(r=>!r.date.startsWith('20 70'.replace(' ',''
 
 console.log('\n【持久化往返】');
 (async()=>{
-  const data={lang:'ja',txns:rows.slice(0,5),cur:'CNY',favs:['CNY','JPY'],setupDone:true,batches:[{hash:plan.hash}],
+  const data={lang:'ja',txns:rows.slice(0,5),cur:'CNY',favs:['CNY','JPY'],fxAnchor:'USD',setupDone:true,batches:[{hash:plan.hash}],
     fxPairs:[{id:'fxp_test',from:'USD',to:'JPY',side:'to',value:'160'}]};
   M.saveAll(data);
   await new Promise(r=>setTimeout(r,600));
@@ -56,7 +63,8 @@ console.log('\n【持久化往返】');
   ok('存后能读回', !!back);
   ok('语言保留', back.lang==='ja');
   ok('交易保留', back.txns.length===5);
-  ok('主币种保留', back.cur==='CNY');
+  ok('当前记账币种保留', back.cur==='CNY');
+  ok('汇率基准标记保留', back.fxAnchor==='USD');
   ok('批次保留(可识别重复文件)', back.batches[0].hash===plan.hash);
   ok('汇率计算行保留', back.fxPairs?.[0]?.from==='USD' && back.fxPairs[0].to==='JPY' && back.fxPairs[0].value==='160');
   const p2=M.buildImportPlan(text,{cutoff:'2026-07-31',existingCats:[],existingKeys:new Set(back.txns.map(x=>x.srcKey))});

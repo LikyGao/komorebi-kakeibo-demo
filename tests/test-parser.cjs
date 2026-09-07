@@ -107,7 +107,8 @@ f1,房租,expense,80000,JPY,10,居住,25,1,2026-08
 #EXCHANGE_RATES
 date,currency,rateToJPY,source
 2026-08-07,CNY,23.6,api
-2026-08-07,JPY,1,api`;
+2026-08-07,JPY,1,api
+2026-08-07,USD,160,api`;
 const backupPlan=buildImportPlan(backupText,{existingCats:SEED_CATS,existingKeys:new Set()});
 ok('识别为本应用备份格式', backupPlan.kind==='backup', backupPlan.kind);
 ok('备份交易可导入', backupPlan.stats.ready===2 && backupPlan.rows.length===2, String(backupPlan.stats.ready));
