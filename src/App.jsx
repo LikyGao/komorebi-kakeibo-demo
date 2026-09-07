@@ -89,6 +89,7 @@ const LANGS = [
 const DICT = {
   zh: {
     "nav.record":"记账","nav.ledger":"账本","nav.stat":"分析","nav.set":"设置",
+    "x.currentCurrency":"当前货币",
     "t.expense":"支出","t.income":"收入","t.balance":"结余",
     "r.date":"日期","r.note":"记录","r.category":"分类","r.notePh":"添加备注",
     "r.rowExpense":"支出","r.rowIncome":"收入","r.rowCategory":"分类",
@@ -148,6 +149,7 @@ const DICT = {
   },
   ja: {
     "nav.record":"入力","nav.ledger":"家計簿","nav.stat":"分析","nav.set":"設定",
+    "x.currentCurrency":"現在の通貨",
     "t.expense":"支出","t.income":"収入","t.balance":"収支",
     "r.date":"日付","r.note":"メモ","r.category":"分類","r.notePh":"メモを追加",
     "r.rowExpense":"支出","r.rowIncome":"収入","r.rowCategory":"分類",
@@ -207,6 +209,7 @@ const DICT = {
   },
   en: {
     "nav.record":"Add","nav.ledger":"Ledger","nav.stat":"Insights","nav.set":"Settings",
+    "x.currentCurrency":"Current currency",
     "t.expense":"Expense","t.income":"Income","t.balance":"Net",
     "r.date":"Date","r.note":"Note","r.category":"Category","r.notePh":"Add a note",
     "r.rowExpense":"Spent","r.rowIncome":"Got","r.rowCategory":"Category",
@@ -266,6 +269,7 @@ const DICT = {
   },
   ko: {
     "nav.record":"기록","nav.ledger":"장부","nav.stat":"분석","nav.set":"설정",
+    "x.currentCurrency":"현재 통화",
     "t.expense":"지출","t.income":"수입","t.balance":"잔액",
     "r.date":"날짜","r.note":"메모","r.category":"분류","r.notePh":"메모 추가",
     "r.rowExpense":"지출","r.rowIncome":"수입","r.rowCategory":"분류",
@@ -1126,15 +1130,19 @@ const Seg = ({ value, onChange, items, sm }) => (
 );
 /* 标签宽度按语言自适应:中日韩两三个字,英文单词更长 */
 /* 各统计页顶部的「当前主货币」提示 */
-const MainHint = ({ code, cls = "" }) => {
+const MainHint = ({ code, cls = "", label = "x.mainNow", onClick }) => {
   const { t } = useT();
-  return (
-    <div className={`flex items-center gap-1 ${cls}`}>
-      <span style={{ fontSize: 10.5, color: C.ink3 }}>{t("x.mainNow")}</span>
+  const content = (
+    <>
+      <span style={{ fontSize: 10.5, color: C.ink3 }}>{t(label)}</span>
       <span style={{ fontSize: 12 }}>{flag(code)}</span>
       <span className="num" style={{ fontSize: 10.5, fontWeight: 700, color: C.ink2 }}>{code}</span>
-    </div>
+      {onClick && <ChevronRight size={13} color={C.ink3} />}
+    </>
   );
+  return onClick ? (
+    <button type="button" onClick={onClick} className={`flex items-center gap-1 ${cls}`}>{content}</button>
+  ) : <div className={`flex items-center gap-1 ${cls}`}>{content}</div>;
 };
 
 const Row = ({ label, children, last }) => {
@@ -1648,9 +1656,10 @@ function FxScreen({ fx, setFx, cur, favs, onBack }) {
 /* ═════════════════════════════════════════════════════════
    账本页
    ═════════════════════════════════════════════════════════ */
-function Ledger({ txns, cats, y, m, setYm, cur, fx, main, onEdit, onDelete }) {
+function Ledger({ txns, cats, y, m, setYm, cur, setCur, favs, fx, main, onEdit, onDelete }) {
   const { t } = useT(); const L = useLabel();
   const [pick, setPick] = useState(null);
+  const [currencySheet, setCurrencySheet] = useState(false);
   const [showAll, setShowAll] = useState(false);   // 支出以外的数字默认收起
   const [editing, setEditing] = useState(null);
   const key = `${y}-${String(m).padStart(2, "0")}`;
@@ -1707,7 +1716,7 @@ function Ledger({ txns, cats, y, m, setYm, cur, fx, main, onEdit, onDelete }) {
               </>
             )}
           </div>
-          <MainHint code={main} cls="px-4 pb-2" />
+          <MainHint code={main} label="x.currentCurrency" onClick={() => setCurrencySheet(true)} cls="px-4 pb-2" />
           <div className="grid grid-cols-7 gap-1 px-4 pb-2">
             {[0,1,2,3,4,5,6].map((i) => <div key={i} className="text-center truncate" style={{ fontSize: 10, color: C.ink3, paddingBottom: 2 }}>{t(`w${i}`)}</div>)}
             {cells.map((d, i) => {
@@ -1786,6 +1795,9 @@ function Ledger({ txns, cats, y, m, setYm, cur, fx, main, onEdit, onDelete }) {
       </div>
       {editing && (
         <EntryEditor entry={editing} cats={cats} fx={fx} onSave={onEdit} onDelete={onDelete} onClose={() => setEditing(null)} />
+      )}
+      {currencySheet && (
+        <CurrencySheet title={t("x.currentCurrency")} favs={favs} value={cur} onPick={setCur} onClose={() => setCurrencySheet(false)} />
       )}
     </div>
   );
@@ -3179,6 +3191,7 @@ export default function App() {
   const [batches, setBatches] = useState([]);          // 导入批次,用于识别重复文件
   const [[y, m], setYm] = useState([+TODAY.slice(0, 4), +TODAY.slice(5, 7)]);
   const [cur, setCur] = useState("JPY");
+  const [ledgerCur, setLedgerCur] = useState("JPY");
 
   /* 启动读盘。没有存档就保持空账本。 */
   useEffect(() => {
@@ -3196,6 +3209,7 @@ export default function App() {
         if (d.fxPairs?.length) setFxPairs(d.fxPairs.map((p, i) => ({ id: p.id || `fxp_${i}`, side: p.side || "from", value: p.value ?? "1", from: p.from || "CNY", to: p.to || d.cur || cur })));
         if (d.favs?.length) setFavs(d.favs);
         if (d.cur) setCur(d.cur);
+        setLedgerCur(d.ledgerCur || d.cur || "JPY");
         setBatches(d.batches || []);
         setSetupDone(!!d.setupDone);
       } else {
@@ -3210,8 +3224,8 @@ export default function App() {
   /* 任何一处状态变化就存盘(内部有 400ms 合并) */
   useEffect(() => {
     if (!ready) return;
-    saveAll({ lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, setupDone, batches });
-  }, [ready, lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, setupDone, batches]);
+    saveAll({ lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, ledgerCur, setupDone, batches });
+  }, [ready, lang, txns, cats, quicks, fixed, budgets, fx, fxPairs, favs, cur, ledgerCur, setupDone, batches]);
 
   const t = useMemo(() => (k) => DICT[lang]?.[k] ?? DICT.zh[k] ?? k, [lang]);
   const ctx = useMemo(() => ({ lang, t }), [lang, t]);
@@ -3263,7 +3277,7 @@ export default function App() {
         <style>{CSS}</style>
         <div className="w-full flex justify-center" style={{ background: "linear-gradient(180deg,#DDEFE8 0%,#E9EDF5 52%,#E2E7EF 100%)", minHeight: "100vh", fontFamily: F_UI }}>
           <div className="app-frame relative flex flex-col w-full" style={{ maxWidth: 400, height: "100vh", background: C.page }}>
-            <CurrencySetup lang={lang} onDone={({ main, favs: f }) => { setCur(main); setFavs(f); setSetupDone(true); }} />
+            <CurrencySetup lang={lang} onDone={({ main, favs: f }) => { setCur(main); setLedgerCur(main); setFavs(f); setSetupDone(true); }} />
           </div>
         </div>
       </LangCtx.Provider>
@@ -3281,7 +3295,7 @@ export default function App() {
     tab === "record" ? <Record cats={cats} quicks={quicks} txns={txns} onSave={add} cur={cur} setCur={setCur}
                          goQuick={() => setSub("quick")} goCats={() => setSub("cats")}
                          fx={fx} setFx={setFx} main={cur} goFx={() => setSub("fx")} favs={favs} fxPairs={fxPairs} setFxPairs={setFxPairs} /> :
-    tab === "ledger" ? <Ledger txns={txns} cats={cats} y={y} m={m} setYm={setYm} cur={cur} fx={fx} main={cur} onEdit={editTxn} onDelete={delTxn} /> :
+    tab === "ledger" ? <Ledger txns={txns} cats={cats} y={y} m={m} setYm={setYm} cur={ledgerCur} setCur={setLedgerCur} favs={favs} fx={fx} main={ledgerCur} onEdit={editTxn} onDelete={delTxn} /> :
     tab === "report" ? <Report txns={txns} cats={cats} cur={cur} fx={fx} y={y} m={m} setYm={setYm} main={cur} favs={favs} /> :
     tab === "stat"   ? <Analysis txns={txns} cats={cats} budgets={budgets} setBudgets={setBudgets} y={y} m={m} setYm={setYm}
                          cur={cur} fx={fx} goFx={() => setSub("fx")} main={cur} /> :
