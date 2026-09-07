@@ -512,10 +512,18 @@ const ratesOn = (daily, date) => {
   return best ? { rates: daily[best], at: best, carried: true } : null;
 };
 
+/* 补记早于第一份快照的日期时,用本机现有的最近快照兜底。 */
+const ratesForWrite = (daily, date) => {
+  const prior = ratesOn(daily, date);
+  if (prior) return prior;
+  const latest = Object.keys(daily).sort().pop();
+  return latest ? { rates: daily[latest], at: latest, carried: true } : null;
+};
+
 /* 落账时物化当天快照。当天没有手动更新就复制最近一次完整汇率。 */
 const carryRatesToDate = (daily, date) => {
   if (!date || daily[date]) return daily;
-  const snap = ratesOn(daily, date);
+  const snap = ratesForWrite(daily, date);
   if (!snap) return daily;
   return {
     ...daily,
@@ -3221,34 +3229,34 @@ export default function App() {
 
   /* 记账时就钉住用哪一天的汇率,之后回填新汇率也不会改动这笔账 */
   const add = (x) => {
-    const canPin = !!ratesOn(fx, x.date);
+    const canPin = !!ratesForWrite(fx, x.date);
     if (canPin) setFx((f) => carryRatesToDate(f, x.date));
     setTxns((xs) => [...xs, { ...x, id: Date.now() + Math.random(), fx: null, fxd: canPin ? x.date : null }]);
   };
   const editTxn = (x) => {
     const old = txns.find((z) => z.id === x.id);
     const moved = old && old.date !== x.date;
-    const canPin = !!ratesOn(fx, x.date);
+    const canPin = !!ratesForWrite(fx, x.date);
     if (moved && canPin) setFx((f) => carryRatesToDate(f, x.date));
     setTxns((xs) => xs.map((z) => (z.id === x.id ? { ...x, fxd: moved ? (canPin ? x.date : null) : x.fxd } : z)));
   };
   /* 批量导入:先按 srcKey 去重,再一次性并入 */
   const importTxns = (rows) => {
-    const dates = rows.filter((r) => !r.fxd && ratesOn(fx, r.date)).map((r) => r.date);
+    const dates = rows.filter((r) => !r.fxd && ratesForWrite(fx, r.date)).map((r) => r.date);
     if (dates.length) setFx((f) => carryRatesToDates(f, dates));
     setTxns((xs) => {
     const have = new Set(xs.filter((z) => z.srcKey).map((z) => z.srcKey));
-    return [...xs, ...rows.filter((r) => !have.has(r.srcKey)).map((r) => ({ ...r, fxd: r.fxd || (ratesOn(fx, r.date) ? r.date : null) }))];
+    return [...xs, ...rows.filter((r) => !have.has(r.srcKey)).map((r) => ({ ...r, fxd: r.fxd || (ratesForWrite(fx, r.date) ? r.date : null) }))];
     });
   };
   const delTxn = (id) => setTxns((xs) => xs.filter((z) => z.id !== id));
   const catchUp = () => {
     const pending = pendingFixed(fixed, txns);
-    const dates = pending.filter((z) => ratesOn(fx, z.date)).map((z) => z.date);
+    const dates = pending.filter((z) => ratesForWrite(fx, z.date)).map((z) => z.date);
     if (dates.length) setFx((f) => carryRatesToDates(f, dates));
     setTxns((xs) => {
       const rows = pendingFixed(fixed, xs);
-      return rows.length ? [...xs, ...rows.map((z, i) => ({ ...z, id: Date.now() + i, fxd: ratesOn(fx, z.date) ? z.date : null }))] : xs;
+      return rows.length ? [...xs, ...rows.map((z, i) => ({ ...z, id: Date.now() + i, fxd: ratesForWrite(fx, z.date) ? z.date : null }))] : xs;
     });
   };
   useEffect(() => { catchUp(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [fixed]);

@@ -21,6 +21,8 @@ const seedRates=M.SEED_FX_DAILY[Object.keys(M.SEED_FX_DAILY)[0]];
 ok('初始快照包含所有支持币种', Object.keys(M.CUR).every(c=>seedRates[c]>0));
 const carried=M.carryRatesToDate(M.SEED_FX_DAILY,'2099-01-02');
 ok('未更新当天会生成当天完整快照', !!carried['2099-01-02'] && Object.keys(M.CUR).every(c=>carried['2099-01-02'][c]>0));
+const backdated=M.carryRatesToDate(M.SEED_FX_DAILY,'2000-01-02');
+ok('补记早期账目也会生成完整快照', !!backdated['2000-01-02'] && Object.keys(M.CUR).every(c=>backdated['2000-01-02'][c]>0));
 const legacy=M.reanchorDailyToUsd({'2026-01-01':{JPY:M.FX_SCALE,CNY:Math.round(23.6*M.FX_SCALE),USD:160*M.FX_SCALE}});
 ok('旧 JPY 基准汇率可等价迁移', M.convertOn(10000,'CNY','JPY','2026-01-01',legacy)===2360);
 const text=fs.readFileSync('tests/komorebi_sample.csv','utf8');
